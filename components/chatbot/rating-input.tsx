@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils"
 
 interface RatingInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-export function RatingInput({ onSubmit, className }: RatingInputProps) {
-  const [selected, setSelected] = useState<number | null>(null)
+export function RatingInput({ onSubmit, defaultValue, className }: RatingInputProps) {
+  const [selected, setSelected] = useState<number | null>(defaultValue ? parseInt(defaultValue, 10) : null)
   const [hovered, setHovered] = useState<number | null>(null)
 
   const display = hovered ?? selected

@@ -10,11 +10,14 @@ interface MultiSelectProps {
   onSubmit: (value: string) => void
   minSelect?: number
   maxSelect?: number
+  defaultValue?: string
   className?: string
 }
 
-export function MultiSelect({ options, onSubmit, minSelect = 1, maxSelect, className }: MultiSelectProps) {
-  const [selected, setSelected] = useState<string[]>([])
+export function MultiSelect({ options, onSubmit, minSelect = 1, maxSelect, defaultValue, className }: MultiSelectProps) {
+  const [selected, setSelected] = useState<string[]>(
+    defaultValue ? defaultValue.split(", ").filter(v => options.includes(v)) : []
+  )
 
   const toggleOption = (option: string) => {
     setSelected(prev => {

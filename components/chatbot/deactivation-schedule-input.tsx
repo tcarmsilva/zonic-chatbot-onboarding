@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 
 interface DeactivationScheduleInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
@@ -44,9 +45,37 @@ const DEFAULT_SCHEDULE: ScheduleState = {
   sunday: { enabled: false, start: "08:00", end: "12:00" },
 }
 
-export function DeactivationScheduleInput({ onSubmit, className }: DeactivationScheduleInputProps) {
-  const [mode, setMode] = useState<"always_on" | "scheduled">("always_on")
-  const [schedule, setSchedule] = useState<ScheduleState>(DEFAULT_SCHEDULE)
+export function DeactivationScheduleInput({ onSubmit, defaultValue, className }: DeactivationScheduleInputProps) {
+  const [mode, setMode] = useState<"always_on" | "scheduled">(() => {
+    if (defaultValue) {
+      try {
+        const parsed = JSON.parse(defaultValue) as { mode?: string }
+        if (parsed.mode === "scheduled") return "scheduled"
+      } catch { /* fall through */ }
+    }
+    return "always_on"
+  })
+  const [schedule, setSchedule] = useState<ScheduleState>(() => {
+    if (defaultValue) {
+      try {
+        const parsed = JSON.parse(defaultValue) as { mode?: string; schedule?: Record<string, { start_h: number; end_h: number }> }
+        if (parsed.mode === "scheduled" && parsed.schedule) {
+          const restored: ScheduleState = { ...DEFAULT_SCHEDULE }
+          for (const [day, times] of Object.entries(parsed.schedule)) {
+            if (restored[day]) {
+              restored[day] = {
+                enabled: true,
+                start: `${String(times.start_h).padStart(2, "0")}:00`,
+                end: `${String(times.end_h).padStart(2, "0")}:00`,
+              }
+            }
+          }
+          return restored
+        }
+      } catch { /* fall through */ }
+    }
+    return DEFAULT_SCHEDULE
+  })
 
   const toggleDay = (dayKey: string) => {
     setSchedule(prev => ({

@@ -13,6 +13,7 @@ interface MultiTextInputProps {
   addButtonText?: string
   minItems?: number
   maxItems?: number
+  defaultValue?: string
   className?: string
 }
 
@@ -22,9 +23,12 @@ export function MultiTextInput({
   addButtonText = "Adicionar",
   minItems = 1,
   maxItems = 10,
+  defaultValue,
   className,
 }: MultiTextInputProps) {
-  const [items, setItems] = useState<string[]>([""])
+  const [items, setItems] = useState<string[]>(
+    defaultValue ? defaultValue.split("\n").filter(Boolean) : [""]
+  )
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
 
   useEffect(() => {

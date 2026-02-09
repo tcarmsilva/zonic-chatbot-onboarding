@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 
 interface OperatingHoursInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
@@ -46,8 +47,17 @@ const DEFAULT_HOURS: HoursState = {
   sunday: { enabled: false, start: "08:00", end: "12:00" },
 }
 
-export function OperatingHoursInput({ onSubmit, className }: OperatingHoursInputProps) {
-  const [hours, setHours] = useState<HoursState>(DEFAULT_HOURS)
+export function OperatingHoursInput({ onSubmit, defaultValue, className }: OperatingHoursInputProps) {
+  const [hours, setHours] = useState<HoursState>(() => {
+    if (defaultValue) {
+      try {
+        const parsed = JSON.parse(defaultValue) as HoursState
+        // Validate structure has day keys
+        if (parsed && typeof parsed === "object" && "monday" in parsed) return parsed
+      } catch { /* fall through */ }
+    }
+    return DEFAULT_HOURS
+  })
 
   const toggleDay = (dayKey: string) => {
     setHours(prev => ({

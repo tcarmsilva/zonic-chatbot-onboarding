@@ -41,11 +41,12 @@ function validateCnpj(cnpj: string): boolean {
 
 interface CnpjInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-export function CnpjInput({ onSubmit, className }: CnpjInputProps) {
-  const [value, setValue] = useState("")
+export function CnpjInput({ onSubmit, defaultValue, className }: CnpjInputProps) {
+  const [value, setValue] = useState(defaultValue ? formatCnpj(defaultValue) : "")
   const [error, setError] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 

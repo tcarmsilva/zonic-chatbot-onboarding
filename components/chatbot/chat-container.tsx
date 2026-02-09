@@ -2,7 +2,7 @@
 
 import type React from "react"
 import { useState, useEffect, useRef, useCallback } from "react"
-import { CheckCircle, Calendar, Clock } from "lucide-react"
+import { CheckCircle, Calendar, Clock, ChevronUp } from "lucide-react"
 import { Banner } from "./banner"
 import { BotMessage } from "./bot-message"
 import { UserMessage } from "./user-message"
@@ -43,7 +43,8 @@ import {
 } from "@/lib/chat-persistence"
 import { 
   initializeOnboarding, 
-  saveOnboardingField 
+  saveOnboardingField,
+  updateOnboardingRecord 
 } from "@/lib/supabase-onboarding"
 import type { ChatbotConfig, ChatStep } from "@/lib/chatbot-config"
 import type { CalendarId } from "@/lib/cal-config"
@@ -534,6 +535,30 @@ export function ChatContainer({ config }: ChatContainerProps) {
       }
     }
 
+    // Platform users (team_members): stored as JSON array of { role, name, phone, email }; show readable summary
+    if (step.type === "team_members") {
+      if (value === "Mais ninguém") {
+        displayMessage = "Mais ninguém"
+      } else {
+        try {
+          const parsed = JSON.parse(value) as Array<{ role?: string; name?: string; phone?: string; email?: string }>
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            displayMessage = parsed
+              .map((u) => {
+                const role = u.role || ""
+                const name = u.name || ""
+                const phone = u.phone ? ` (${u.phone})` : ""
+                const email = u.email ? ` ${u.email}` : ""
+                return `${role}: ${name}${phone}${email}`
+              })
+              .join("\n")
+          }
+        } catch {
+          // keep raw value if not valid JSON
+        }
+      }
+    }
+
     addUserMessage(displayMessage)
     hideAllInputs()
 
@@ -567,23 +592,22 @@ export function ChatContainer({ config }: ChatContainerProps) {
     // Save to database
     if (onboardingId) {
       if (step.type === "project_responsible_details") {
-        const keys = ["project_responsible_name", "project_responsible_phone", "project_responsible_email"] as const
-        keys.forEach((key) => {
-          const val = updatedUserData[key]
-          if (val !== undefined) {
-            saveOnboardingField(onboardingId, key, val)
-              .then((result) => {
-                if (result.success) {
-                  console.log(`[Onboarding] Saved ${key} to record ${onboardingId}`)
-                } else {
-                  console.warn(`[Onboarding] Failed to save ${key}:`, result.error)
-                }
-              })
-              .catch((error) => {
-                console.error(`[Onboarding] Error saving ${key}:`, error)
-              })
-          }
-        })
+        // Send all project responsible fields in one request so client_data is updated atomically (no race)
+        const data: Record<string, string> = {}
+        if (updatedUserData.project_responsible_name !== undefined) data.project_responsible_name = updatedUserData.project_responsible_name
+        if (updatedUserData.project_responsible_phone !== undefined) data.project_responsible_phone = updatedUserData.project_responsible_phone
+        if (updatedUserData.project_responsible_email !== undefined) data.project_responsible_email = updatedUserData.project_responsible_email
+        updateOnboardingRecord(onboardingId, data)
+          .then((result) => {
+            if (result.success) {
+              console.log(`[Onboarding] Saved project_responsible details to record ${onboardingId}`)
+            } else {
+              console.warn(`[Onboarding] Failed to save project_responsible details:`, result.error)
+            }
+          })
+          .catch((error) => {
+            console.error(`[Onboarding] Error saving project_responsible details:`, error)
+          })
       } else {
         saveOnboardingField(onboardingId, step.dataKey, valueToSave)
           .then((result) => {
@@ -620,6 +644,33 @@ export function ChatContainer({ config }: ChatContainerProps) {
       setCurrentStepIndex(filteredStepsNew.length)
       showCompletionMessage(updatedUserData)
     }
+  }
+
+  const handleGoBack = () => {
+    const filteredSteps = getFilteredSteps(userData)
+    if (currentStepIndex <= 0 || isTyping) return
+
+    const prevStep = filteredSteps[currentStepIndex - 1]
+    if (!prevStep) return
+
+    // Hide all current inputs
+    hideAllInputs()
+
+    // Remove last 3 messages: current bot question, previous user answer, previous bot question
+    // The previous bot question will be re-added by the step useEffect
+    setMessages(prev => prev.slice(0, -3))
+
+    // Only clear user data for instant-select types (clicking a button immediately submits
+    // without a confirm step, so we can't pre-fill). For all other types, keep the data
+    // so the input component can pre-fill with the previous answer.
+    if (prevStep.type === "choices" || prevStep.type === "single_role_choice") {
+      const newUserData = { ...userData }
+      delete newUserData[prevStep.dataKey]
+      setUserData(newUserData)
+    }
+
+    // Go to previous step — the step useEffect will re-add the bot message and show the input
+    setCurrentStepIndex(currentStepIndex - 1)
   }
 
   const showCompletionMessage = (finalUserData: Record<string, string>) => {
@@ -725,14 +776,14 @@ export function ChatContainer({ config }: ChatContainerProps) {
 
     switch (step.type) {
       case "phone":
-        return <PhoneInput onSubmit={handleSubmit} />
+        return <PhoneInput onSubmit={handleSubmit} defaultValue={userData[step.dataKey]} />
       case "email":
-        return <EmailInput onSubmit={handleSubmit} />
+        return <EmailInput onSubmit={handleSubmit} defaultValue={userData[step.dataKey]} />
       case "cnpj":
-        return <CnpjInput onSubmit={handleSubmit} />
+        return <CnpjInput onSubmit={handleSubmit} defaultValue={userData[step.dataKey]} />
       default:
         return (
-          <TextInput onSubmit={handleSubmit} type="text" placeholder={step.placeholder || "Digite sua resposta..."} />
+          <TextInput onSubmit={handleSubmit} type="text" placeholder={step.placeholder || "Digite sua resposta..."} defaultValue={userData[step.dataKey]} />
         )
     }
   }
@@ -827,6 +878,9 @@ export function ChatContainer({ config }: ChatContainerProps) {
               <ProjectResponsibleDetailsInput
                 roleLabel={userData.project_responsible_role}
                 onSubmit={handleSubmit}
+                defaultName={userData.project_responsible_name}
+                defaultPhone={userData.project_responsible_phone}
+                defaultEmail={userData.project_responsible_email}
               />
             </div>
           )}
@@ -839,6 +893,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
                 onSubmit={handleSubmit}
                 minSelect={currentStep.minSelect || 1}
                 maxSelect={currentStep.maxSelect}
+                defaultValue={userData[currentStep.dataKey]}
               />
             </div>
           )}
@@ -846,21 +901,21 @@ export function ChatContainer({ config }: ChatContainerProps) {
           {/* Timezone Select */}
           {showTimezone && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4 px-4">
-              <TimezoneSelect onSubmit={handleSubmit} />
+              <TimezoneSelect onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
           {/* Operating Hours */}
           {showOperatingHours && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <OperatingHoursInput onSubmit={handleSubmit} />
+              <OperatingHoursInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
           {/* Deactivation Schedule */}
           {showDeactivationSchedule && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <DeactivationScheduleInput onSubmit={handleSubmit} />
+              <DeactivationScheduleInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
@@ -872,6 +927,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
                 min={currentStep.minValue || 1}
                 max={currentStep.maxValue || 999}
                 placeholder={currentStep.placeholder}
+                defaultValue={userData[currentStep.dataKey]}
               />
             </div>
           )}
@@ -883,6 +939,8 @@ export function ChatContainer({ config }: ChatContainerProps) {
                 onSubmit={handleSubmit}
                 placeholder={currentStep.placeholder}
                 helpText={currentStep.helpText}
+                defaultValue={userData[currentStep.dataKey] ?? currentStep.defaultValue}
+                insertableVariables={currentStep.insertableVariables}
               />
             </div>
           )}
@@ -895,6 +953,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
                 placeholder={currentStep.placeholder}
                 addButtonText={currentStep.addButtonText}
                 maxItems={currentStep.maxItems || 10}
+                defaultValue={userData[currentStep.dataKey]}
               />
             </div>
           )}
@@ -902,21 +961,21 @@ export function ChatContainer({ config }: ChatContainerProps) {
           {/* Conversation Flow Select */}
           {showConversationFlow && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <ConversationFlowSelect onSubmit={handleSubmit} />
+              <ConversationFlowSelect onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
           {/* Conversation Style Select */}
           {showConversationStyle && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <ConversationStyleSelect onSubmit={handleSubmit} />
+              <ConversationStyleSelect onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
           {/* Capture Info Input */}
           {showCaptureInfo && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <CaptureInfoInput onSubmit={handleSubmit} />
+              <CaptureInfoInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
@@ -925,6 +984,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
               <TeamMembersInput
                 onSubmit={handleSubmit}
+                defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined}
                 excludedRoleLabel={currentStep?.id === "platform_users" ? userData.project_responsible_role : undefined}
                 requiredRoleLabel={
                   currentStep?.id === "platform_users" && userData.project_responsible_role !== "Dono(a) da clínica"
@@ -941,7 +1001,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
           {/* Instagram Input */}
           {showInstagram && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <InstagramInput onSubmit={handleSubmit} />
+              <InstagramInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
@@ -950,14 +1010,34 @@ export function ChatContainer({ config }: ChatContainerProps) {
           {/* Rating Input */}
           {showRating && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4 px-4">
-              <RatingInput onSubmit={handleSubmit} />
+              <RatingInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
             </div>
           )}
 
           {/* Hot Lead Input (3 fields: muito quente, quente, morno) */}
           {showHotLead && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4 px-4">
-              <HotLeadInput onSubmit={handleSubmit} />
+              <HotLeadInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
+            </div>
+          )}
+
+          {/* Go Back Button (below inline inputs) */}
+          {currentStepIndex > 0 && !isComplete && !isTyping && (
+            showChoices || showSingleRoleChoice || showProjectResponsibleDetails ||
+            showMultiSelect || showTimezone || showOperatingHours || showDeactivationSchedule ||
+            showNumber || showTextarea || showMultiText || showConversationFlow ||
+            showConversationStyle || showCaptureInfo || showTeamMembers || showInstagram ||
+            showRating || showHotLead
+          ) && (
+            <div className="flex justify-center pt-2 pb-2">
+              <button
+                onClick={handleGoBack}
+                className="flex items-center gap-1 text-xs text-[#0051fe] hover:text-[#0051fe]/80 transition-colors py-1.5 px-3 rounded-full hover:bg-[#0051fe]/10"
+                aria-label="Voltar à pergunta anterior"
+              >
+                <ChevronUp className="h-3.5 w-3.5" />
+                <span>Voltar</span>
+              </button>
             </div>
           )}
 
@@ -983,7 +1063,21 @@ export function ChatContainer({ config }: ChatContainerProps) {
           className="fixed inset-x-0 bottom-0 backdrop-blur-sm p-4 animate-in slide-in-from-bottom duration-300"
           style={{ backgroundColor: "rgba(230, 238, 254, 0.95)" }}
         >
-          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6">{renderInput()}</div>
+          <div className="mx-auto w-full max-w-2xl px-4 sm:px-6">
+            {renderInput()}
+            {currentStepIndex > 0 && !isComplete && (
+              <div className="flex justify-center pt-2">
+                <button
+                  onClick={handleGoBack}
+                  className="flex items-center gap-1 text-xs text-[#0051fe] hover:text-[#0051fe]/80 transition-colors py-1.5 px-3 rounded-full hover:bg-[#0051fe]/10"
+                  aria-label="Voltar à pergunta anterior"
+                >
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  <span>Voltar</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

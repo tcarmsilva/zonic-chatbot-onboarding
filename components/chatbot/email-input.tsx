@@ -9,11 +9,12 @@ import { cn } from "@/lib/utils"
 
 interface EmailInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-export function EmailInput({ onSubmit, className }: EmailInputProps) {
-  const [value, setValue] = useState("")
+export function EmailInput({ onSubmit, defaultValue, className }: EmailInputProps) {
+  const [value, setValue] = useState(defaultValue || "")
   const [error, setError] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 

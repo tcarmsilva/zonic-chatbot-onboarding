@@ -8,17 +8,40 @@ import { ArrowUp, ChevronDown, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { COUNTRIES } from "@/lib/phone-countries"
 
+function parsePhoneDefault(defaultVal?: string): { country: typeof COUNTRIES[0]; phone: string } {
+  if (!defaultVal) return { country: COUNTRIES[0], phone: "" }
+  const clean = defaultVal.replace(/\D/g, "")
+  // Match longest dial code first
+  const sorted = [...COUNTRIES].sort((a, b) => b.dial.length - a.dial.length)
+  for (const country of sorted) {
+    if (clean.startsWith(country.dial)) {
+      const local = clean.slice(country.dial.length)
+      if (country.code === "BR" && local.length >= 10) {
+        const formatted =
+          local.length <= 2 ? `(${local}` :
+          local.length <= 7 ? `(${local.slice(0, 2)}) ${local.slice(2)}` :
+          `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7, 11)}`
+        return { country, phone: formatted }
+      }
+      return { country, phone: local }
+    }
+  }
+  return { country: COUNTRIES[0], phone: "" }
+}
+
 interface PhoneInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-export function PhoneInput({ onSubmit, className }: PhoneInputProps) {
-  const [value, setValue] = useState("")
+export function PhoneInput({ onSubmit, defaultValue, className }: PhoneInputProps) {
+  const parsedDefault = parsePhoneDefault(defaultValue)
+  const [value, setValue] = useState(parsedDefault.phone)
   const [error, setError] = useState("")
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0])
+  const [selectedCountry, setSelectedCountry] = useState(parsedDefault.country)
   const inputRef = useRef<HTMLInputElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)

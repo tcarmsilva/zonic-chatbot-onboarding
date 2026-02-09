@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 
 interface CaptureInfoInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
@@ -29,10 +30,20 @@ const SUGGESTED_QUESTIONS = [
   "Qual procedimento tem interesse?",
 ]
 
-export function CaptureInfoInput({ onSubmit, className }: CaptureInfoInputProps) {
-  const [items, setItems] = useState<InfoItem[]>([
-    { id: "1", question: "", acceptedValues: "", isExpanded: true }
-  ])
+export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureInfoInputProps) {
+  const [items, setItems] = useState<InfoItem[]>(() => {
+    if (defaultValue && defaultValue !== "Nenhuma informação adicional") {
+      const lines = defaultValue.split("\n").filter(Boolean)
+      return lines.map((line, i) => {
+        const match = line.match(/^(.+?):\s*\[Aceitos:\s*(.+?)\]$/)
+        if (match) {
+          return { id: String(i + 1), question: match[1].trim(), acceptedValues: match[2].trim(), isExpanded: true }
+        }
+        return { id: String(i + 1), question: line.trim(), acceptedValues: "", isExpanded: true }
+      })
+    }
+    return [{ id: "1", question: "", acceptedValues: "", isExpanded: true }]
+  })
   const [showSuggestions, setShowSuggestions] = useState(false)
 
   const addItem = () => {

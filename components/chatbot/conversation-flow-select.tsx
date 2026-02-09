@@ -7,33 +7,56 @@ import { cn } from "@/lib/utils"
 
 interface ConversationFlowSelectProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-// Mini chat bubble component
-function ChatBubble({ text, isUser = false }: { text: string; isUser?: boolean }) {
+// Placeholder image for before/after example in flow preview
+const BEFORE_AFTER_IMAGE = "https://placehold.co/72x48/e8e8e8/999?text=Antes+%2F+Depois"
+
+// Mini chat bubble component (supports multiline/bullet text and optional image)
+function ChatBubble({
+  text,
+  isUser = false,
+  imageUrl,
+}: {
+  text: string
+  isUser?: boolean
+  imageUrl?: string
+}) {
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "px-2 py-1 rounded-lg text-[10px] max-w-[85%]",
+          "px-2 py-1 rounded-lg text-[10px] max-w-[85%] whitespace-pre-line",
           isUser
             ? "bg-[#0051fe] text-white rounded-br-sm"
             : "bg-gray-200 text-gray-700 rounded-bl-sm"
         )}
       >
-        {text}
+        {text && <span>{text}</span>}
+        {imageUrl && (
+          <img
+            src={imageUrl}
+            alt=""
+            className="mt-1 rounded block w-[72px] h-[48px] object-cover"
+          />
+        )}
       </div>
     </div>
   )
 }
 
 // Flow preview component
-function FlowPreview({ messages }: { messages: Array<{ text: string; isUser?: boolean }> }) {
+function FlowPreview({
+  messages,
+}: {
+  messages: Array<{ text: string; isUser?: boolean; imageUrl?: string }>
+}) {
   return (
     <div className="bg-gray-50 rounded-lg p-2 space-y-1 min-h-[80px]">
       {messages.map((msg, i) => (
-        <ChatBubble key={i} text={msg.text} isUser={msg.isUser} />
+        <ChatBubble key={i} text={msg.text} isUser={msg.isUser} imageUrl={msg.imageUrl} />
       ))}
     </div>
   )
@@ -42,14 +65,27 @@ function FlowPreview({ messages }: { messages: Array<{ text: string; isUser?: bo
 const FLOW_OPTIONS = [
   {
     id: "tipo_1",
-    title: "Tipo 1: Foco em Dores",
-    description: "Identifica dores do paciente e recomenda tratamentos",
+    title: "Tipo 1: Perguntar dores, apresentar tratamentos com autoridade e agendar",
+    description: "Identifica dores do paciente, apresenta tratamentos com autoridade e agenda avaliação",
     messages: [
-      { text: "Olá! Qual seu nome?" },
+      { text: "Bem-vindo(a) à Clínica X! Sou a assistente virtual Ana" },
+      { text: "Qual é o seu nome?" },
       { text: "Maria", isUser: true },
-      { text: "O que você quer melhorar?" },
+      { text: "Olá, Maria! Prazer 😊" },
+      { text: "O que você busca melhorar com mais urgência?\n• Rugas\n• Flacidez\n• Dor de dente\n• Alinhamento dental" },
       { text: "Rugas", isUser: true },
-      { text: "Recomendo Botox! 📸" },
+      { text: "Somos referência em tratamentos para rugas, então você está em boas mãos!" },
+      { text: "Para o tratamento de rugas, normalmente utilizamos toxina botulínica e preenchimento" },
+      { text: "Vou te enviar um exemplo de resultado para você ver como fica:" },
+      { imageUrl: BEFORE_AFTER_IMAGE },
+      { text: "É esse tipo de resultado que você está buscando?" },
+      { text: "Sim!", isUser: true },
+      { text: "Perfeito! Recomendamos agendar uma avaliação com os nossos doutores para personalizarem o tratamento para o seu caso e também já te passarem um orçamento" },
+      { text: "Qual período do dia fica melhorpara você? (manhã, tarde ou noite)" },
+      { text: "Tarde", isUser: true },
+      { text: "Amanhã à tarde: 14h, 15h ou 16h. Qual prefere?" },
+      { text: "15h", isUser: true },
+      { text: "Agendado! ✅" },
     ],
   },
   {
@@ -57,29 +93,55 @@ const FLOW_OPTIONS = [
     title: "Tipo 2: Menu Direto",
     description: "Oferece opções e responde/agenda diretamente",
     messages: [
-      { text: "Olá! Como posso ajudar?" },
+      { text: "Bem-vindo(a) à Clínica X! Sou a assistente virtual Ana" },
+      { text: "Qual é o seu nome?" },
+      { text: "Maria", isUser: true },
+      { text: "Olá, Maria! Prazer 😊" },
+      { text: "Como posso te ajudar?\n• Agendar consulta\n• Marcar exame\n• Dúvidas" },
       { text: "Agendar consulta", isUser: true },
-      { text: "Qual horário prefere?" },
-      { text: "Amanhã às 14h", isUser: true },
+      { text: "Qual parte do dia você prefere? (manhã, tarde ou noite)" },
+      { text: "Tarde", isUser: true },
+      { text: "Tenho esses horários disponíveis para amanhã: 14h, 15h ou 16h" },
+      { text: "Qual fica melhor para você?" },
+      { text: "15h", isUser: true },
       { text: "Agendado! ✅" },
     ],
   },
   {
     id: "tipo_3",
     title: "Tipo 3: Menu + Triagem",
-    description: "Oferece opções e faz perguntas antes de agendar",
+    description: "Oferece opções e faz perguntas (idade, plano, carteirinha) antes de agendar",
     messages: [
-      { text: "Olá! Como posso ajudar?" },
+      { text: "Bem-vindo à Clínica X! Sou a assistente virtual Ana. Qual é o seu nome?" },
+      { text: "Maria", isUser: true },
+      { text: "Olá, Maria! 😊" },
+      { text: "Como posso ajudar? \n• Agendar consulta\n• Marcar exame\n• Dúvidas" },
       { text: "Agendar consulta", isUser: true },
+      { text: "Perfeito! Vou te fazer algumas perguntas para podermos agendar, ok?" },
+      { text: "Qual sua idade?" },
+      { text: "35", isUser: true },
       { text: "Qual seu plano de saúde?" },
       { text: "Unimed", isUser: true },
-      { text: "Qual horário prefere?" },
+      { text: "Qual o número da sua carteirinha?" },
+      { text: "123456", isUser: true },
+      { text: "Qual parte do dia você prefere? (manhã, tarde ou noite)" },
+      { text: "Tarde", isUser: true },
+      { text: "Tenho esses horários disponíveis para amanhã: 14h, 15h ou 16h" },
+      { text: "Qual fica melhor para você?" },
+      { text: "15h", isUser: true },
+      { text: "Agendado! ✅" },
     ],
   },
 ]
 
-export function ConversationFlowSelect({ onSubmit, className }: ConversationFlowSelectProps) {
-  const [selected, setSelected] = useState<string | null>(null)
+export function ConversationFlowSelect({ onSubmit, defaultValue, className }: ConversationFlowSelectProps) {
+  const [selected, setSelected] = useState<string | null>(
+    defaultValue
+      ? (FLOW_OPTIONS.find(f => f.title === defaultValue)?.id ??
+         FLOW_OPTIONS.find(f => f.id === defaultValue)?.id ??
+         null)
+      : null
+  )
 
   const handleSubmit = () => {
     if (selected) {

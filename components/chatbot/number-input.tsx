@@ -12,11 +12,12 @@ interface NumberInputProps {
   min?: number
   max?: number
   placeholder?: string
+  defaultValue?: string
   className?: string
 }
 
-export function NumberInput({ onSubmit, min = 1, max = 999, placeholder = "Digite um número...", className }: NumberInputProps) {
-  const [value, setValue] = useState<number | null>(null)
+export function NumberInput({ onSubmit, min = 1, max = 999, placeholder = "Digite um número...", defaultValue, className }: NumberInputProps) {
+  const [value, setValue] = useState<number | null>(defaultValue ? parseInt(defaultValue, 10) : null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {

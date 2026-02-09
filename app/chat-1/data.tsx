@@ -298,6 +298,8 @@ export const chatConfig: ChatbotConfig = {
       ),
       placeholder: "Digite a mensagem de saudação...",
       helpText: "Esta será a primeira mensagem que o lead receberá",
+      defaultValue: "Olá, {{nome}}! Seja bem-vindo(a) 😊",
+      insertableVariables: [{ label: "Nome", value: "{{nome}}" }],
       dataKey: "greeting",
       trackingEvent: "greeting",
     },

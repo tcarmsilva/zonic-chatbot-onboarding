@@ -51,6 +51,10 @@ export interface ChatStep {
   maxValue?: number
   // For textarea: help text
   helpText?: string
+  // For textarea: predefined value when user hasn't answered yet (user can edit)
+  defaultValue?: string
+  // For textarea: variables the user can insert (e.g. {{nome}}) at cursor position
+  insertableVariables?: { label: string; value: string }[]
   // For multi_text: add button text
   addButtonText?: string
   // For multi_text: max items

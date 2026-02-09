@@ -11,6 +11,7 @@ interface TextInputProps {
   placeholder?: string
   onSubmit: (value: string) => void
   type?: "text" | "email" | "tel"
+  defaultValue?: string
   className?: string
 }
 
@@ -18,9 +19,10 @@ export function TextInput({
   placeholder = "Digite sua resposta...",
   onSubmit,
   type = "text",
+  defaultValue,
   className,
 }: TextInputProps) {
-  const [value, setValue] = useState("")
+  const [value, setValue] = useState(defaultValue || "")
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {

@@ -7,16 +7,17 @@ import { cn } from "@/lib/utils"
 
 interface ConversationStyleSelectProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-// Mini chat bubble component
+// Mini chat bubble component (supports multiline)
 function ChatBubble({ text, isUser = false }: { text: string; isUser?: boolean }) {
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "px-2 py-1 rounded-lg text-[10px] max-w-[90%] leading-tight",
+          "px-2 py-1 rounded-lg text-[10px] max-w-[90%] leading-tight whitespace-pre-line",
           isUser
             ? "bg-[#0051fe] text-white rounded-br-sm"
             : "bg-gray-200 text-gray-700 rounded-bl-sm"
@@ -32,40 +33,62 @@ const STYLE_OPTIONS = [
   {
     id: "comercial_agendar",
     title: "Comercial - Foco em Agendar",
-    description: "Abordagem proativa para converter leads em agendamentos",
+    description: "Proativa: convida a agendar logo. Na objeção, tranquiliza e mantém o foco na avaliação (sem compromisso).",
     example: [
-      { text: "Oi! Vi que você tem interesse em harmonização facial! 😍" },
-      { text: "Sim, quero saber mais", isUser: true },
-      { text: "Que ótimo! Posso já agendar sua avaliação gratuita? Temos horários amanhã! 🗓️" },
+      { text: "Quanto custa?", isUser: true },
+      { text: "O valor varia conforme a área tratada e a quantidade de aplicações necessárias Na avaliação nosso doutor pode passar o orçamento específico para o seu caso" },
+      { text: "Inclusive, esta semana estamos com uma promoção especial! A avaliação está gratuita e você ganha 15% OFF no procedimento! 🎉" },
+      { text: "Posso agendar sua avaliação para amanhã? Temos horários às 14h e 16h ainda disponíveis!" },
+      { text: "Vou pensar melhor...", isUser: true },
+      { text: "Você pode compartilhar comigo quais as suas dúvidas?" },
+      { text: "Assim já te ajudo a entender melhor o procedimento para podermos agendar a avaliação" },
+      { text: "Inclusive, posso te enviar alguns exemplos de antes e depois para você ver como fica?" },
     ],
     color: "bg-green-50 border-green-200",
   },
   {
     id: "comercial_vender",
     title: "Comercial - Foco em Vender",
-    description: "Abordagem focada em apresentar procedimentos e fechar vendas",
+    description: "Focada em benefícios, ofertas e fechamento. Na objeção, reforça valor e convida a pagar um sinal para garantir a promoção.",
     example: [
-      { text: "Olá! Você sabia que nosso Botox tem 98% de satisfação? ✨" },
-      { text: "Quanto custa?", isUser: true },
-      { text: "Por apenas R$890 você transforma seu rosto! E hoje temos 20% OFF! Posso reservar?" },
+      { text: "Tenho medo de ficar artificial", isUser: true },
+      { text: "Entendo sua preocupação! 💙 É super comum esse receio" },
+      { text: "Nossos especialistas usam uma técnica que garante resultado natural, posso te enviar fotos de antes e depois se quiser" },
+      { text: "E olha: esta semana temos uma oferta especial, Botox testa + glabela por R$890" },
+      { text: "Para garantir o desconto pra você, precisamos de um sinal de R$200, quer que eu reserve?" },
+      { text: "Está caro...", isUser: true },
+      { text: "Te entendo!" },
+      { text: "Se ajudar, na ponta do lápis dá uns R$148 por mês (a duração é em torno de 6 meses)" },
+      { text: "E se você garantir agora com o sinal de R$200, ainda libero 10% de desconto no Pix, assim você não perde a promo e decide a data com calma, que tal? 😊" },
+      { text: "E se eu não puder ir?", isUser: true },
+      { text: "Sem problemas!" },
+      { text: "O sinal garante sua vaga e você tem direito a uma remarcação grátis em 60 dias" },
+      { text: "Ou seja: zero risco pra você, você só garante o melhor preço e escolhe a melhor data depois, quer que eu confirme o sinal de R$200?" },
     ],
     color: "bg-orange-50 border-orange-200",
   },
   {
     id: "profissional_sobria",
     title: "Profissional e Sóbria",
-    description: "Comunicação formal focada em informar e agendar",
+    description: "Formal e informativa. Na objeção, respeita a decisão e oferece informação ou agendamento sem insistir.",
     example: [
-      { text: "Olá, bem-vindo(a) à Clínica Derma. Como posso ajudá-lo(a)?" },
-      { text: "Gostaria de informações sobre botox", isUser: true },
-      { text: "Claro. O procedimento de toxina botulínica é realizado por nossos dermatologistas. Posso agendar uma consulta de avaliação?" },
+      { text: "Preciso pensar melhor", isUser: true },
+      { text: "Sem problema Quando decidir, estamos à disposição para agendar a avaliação Deseja que eu envie mais alguma informação?" },
+      { text: "Pode mandar o valor?", isUser: true },
+      { text: "O valor é definido na avaliação, conforme o procedimento indicado Posso agendar a avaliação para você ter o orçamento personalizado" },
     ],
     color: "bg-blue-50 border-blue-200",
   },
 ]
 
-export function ConversationStyleSelect({ onSubmit, className }: ConversationStyleSelectProps) {
-  const [selected, setSelected] = useState<string | null>(null)
+export function ConversationStyleSelect({ onSubmit, defaultValue, className }: ConversationStyleSelectProps) {
+  const [selected, setSelected] = useState<string | null>(
+    defaultValue
+      ? (STYLE_OPTIONS.find(s => s.title === defaultValue)?.id ??
+         STYLE_OPTIONS.find(s => s.id === defaultValue)?.id ??
+         null)
+      : null
+  )
 
   const handleSubmit = () => {
     if (selected) {

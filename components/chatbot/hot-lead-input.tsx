@@ -15,14 +15,23 @@ const LABELS = [
 
 interface HotLeadInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
-export function HotLeadInput({ onSubmit, className }: HotLeadInputProps) {
-  const [values, setValues] = useState<Record<string, string>>({
-    muito_quente: "",
-    quente: "",
-    morno: "",
+export function HotLeadInput({ onSubmit, defaultValue, className }: HotLeadInputProps) {
+  const [values, setValues] = useState<Record<string, string>>(() => {
+    if (defaultValue) {
+      try {
+        const parsed = JSON.parse(defaultValue) as Record<string, string>
+        return {
+          muito_quente: parsed.muito_quente || "",
+          quente: parsed.quente || "",
+          morno: parsed.morno || "",
+        }
+      } catch { /* fall through */ }
+    }
+    return { muito_quente: "", quente: "", morno: "" }
   })
   const firstRef = useRef<HTMLInputElement>(null)
 

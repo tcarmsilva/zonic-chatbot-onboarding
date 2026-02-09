@@ -10,6 +10,7 @@ import { validateFullPhone } from "@/lib/phone-countries"
 
 interface TeamMembersInputProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
   /** Opção já escolhida como responsável pela implantação - não aparece na lista */
   excludedRoleLabel?: string
@@ -29,7 +30,7 @@ interface TeamMember {
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
-export function TeamMembersInput({ onSubmit, className, excludedRoleLabel, requiredRoleLabel, showNoOneElse }: TeamMembersInputProps) {
+export function TeamMembersInput({ onSubmit, defaultValue, className, excludedRoleLabel, requiredRoleLabel, showNoOneElse }: TeamMembersInputProps) {
   const availableOptions = excludedRoleLabel
     ? ROLE_OPTIONS.filter((r) => r.label !== excludedRoleLabel)
     : [...ROLE_OPTIONS]
@@ -37,9 +38,32 @@ export function TeamMembersInput({ onSubmit, className, excludedRoleLabel, requi
   const requiredRoleId = requiredRoleLabel ? ROLE_OPTIONS.find((r) => r.label === requiredRoleLabel)?.id : undefined
   const initialSelected = requiredRoleId && availableOptions.some((r) => r.id === requiredRoleId) ? [requiredRoleId] : []
 
-  const [selectedRoles, setSelectedRoles] = useState<string[]>(initialSelected)
-  const [members, setMembers] = useState<TeamMember[]>([])
-  const [step, setStep] = useState<"select" | "fill">("select")
+  const parsedDefault = (() => {
+    if (!defaultValue || defaultValue === "Mais ninguém") return null
+    try {
+      const parsed = JSON.parse(defaultValue) as Array<{ role: string; name: string; phone: string; email: string }>
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+    } catch { /* fall through */ }
+    return null
+  })()
+
+  const [selectedRoles, setSelectedRoles] = useState<string[]>(
+    parsedDefault
+      ? parsedDefault.map(m => ROLE_OPTIONS.find(r => r.label === m.role)?.id || m.role)
+      : initialSelected
+  )
+  const [members, setMembers] = useState<TeamMember[]>(
+    parsedDefault
+      ? parsedDefault.map(m => ({
+          role: ROLE_OPTIONS.find(r => r.label === m.role)?.id || m.role,
+          roleLabel: m.role,
+          name: m.name,
+          phone: m.phone,
+          email: m.email,
+        }))
+      : []
+  )
+  const [step, setStep] = useState<"select" | "fill">(parsedDefault ? "fill" : "select")
 
   const toggleRole = (roleId: string) => {
     if (requiredRoleId && roleId === requiredRoleId) return
@@ -74,14 +98,13 @@ export function TeamMembersInput({ onSubmit, className, excludedRoleLabel, requi
   }
 
   const handleSubmit = () => {
-    const formatted = members
-      .map((m) => {
-        const phonePart = m.phone ? m.phone : "sem telefone"
-        const emailPart = m.email.trim() ? ` ${m.email.trim()}` : ""
-        return `${m.roleLabel}: ${m.name} (${phonePart})${emailPart}`
-      })
-      .join("\n")
-    onSubmit(formatted)
+    const payload = members.map((m) => ({
+      role: m.roleLabel,
+      name: m.name.trim(),
+      phone: m.phone || "",
+      email: m.email.trim() || "",
+    }))
+    onSubmit(JSON.stringify(payload))
   }
 
   const allMembersValid = members.every(

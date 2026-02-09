@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 
 interface TimezoneSelectProps {
   onSubmit: (value: string) => void
+  defaultValue?: string
   className?: string
 }
 
@@ -18,9 +19,11 @@ const BRAZIL_TIMEZONES = [
   { value: "America/Noronha", label: "Fernando de Noronha (GMT-2)" },
 ]
 
-export function TimezoneSelect({ onSubmit, className }: TimezoneSelectProps) {
+export function TimezoneSelect({ onSubmit, defaultValue, className }: TimezoneSelectProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(
+    defaultValue ? (BRAZIL_TIMEZONES.find(tz => tz.label === defaultValue)?.value ?? null) : null
+  )
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {

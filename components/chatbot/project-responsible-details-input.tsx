@@ -11,6 +11,9 @@ import { validateFullPhone } from "@/lib/phone-countries"
 interface ProjectResponsibleDetailsInputProps {
   roleLabel: string
   onSubmit: (value: string) => void
+  defaultName?: string
+  defaultPhone?: string
+  defaultEmail?: string
   className?: string
 }
 
@@ -19,14 +22,17 @@ const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.
 export function ProjectResponsibleDetailsInput({
   roleLabel,
   onSubmit,
+  defaultName,
+  defaultPhone,
+  defaultEmail,
   className,
 }: ProjectResponsibleDetailsInputProps) {
   const role = getRoleByLabel(roleLabel)
   const icon = role?.icon ?? ""
 
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [email, setEmail] = useState("")
+  const [name, setName] = useState(defaultName || "")
+  const [phone, setPhone] = useState(defaultPhone || "")
+  const [email, setEmail] = useState(defaultEmail || "")
 
   const handleSubmit = () => {
     const payload = {
