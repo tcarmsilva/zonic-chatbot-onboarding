@@ -8,6 +8,8 @@ export type StepInputType =
   | "cnpj"
   | "choices" 
   | "multi_select"
+  | "multi_select_with_custom"
+  | "products_input"
   | "rating"
   | "timezone"
   | "operating_hours"
@@ -23,6 +25,8 @@ export type StepInputType =
   | "project_responsible_details"
   | "instagram"
   | "hot_lead"
+  | "doctors_list"
+  | "followup_stages"
 
 // Definição de cada step do chat
 export interface ChatStep {
@@ -51,10 +55,19 @@ export interface ChatStep {
   maxValue?: number
   // For textarea: help text
   helpText?: string
+  // For textarea: minimum number of visible lines (default 3)
+  minLines?: number
+  // For textarea: maximum number of visible lines before scroll (default 10)
+  maxLines?: number
   // For textarea: predefined value when user hasn't answered yet (user can edit)
-  defaultValue?: string
+  // Can be a string or a function that receives userData and returns a string (for dynamic defaults)
+  defaultValue?: string | ((userData: Record<string, string>) => string)
   // For textarea: variables the user can insert (e.g. {{nome}}) at cursor position
   insertableVariables?: { label: string; value: string }[]
+  // For textarea: hide the emoji picker button (default false)
+  hideEmoji?: boolean
+  // For textarea: clickable suggestion options that append to the input (user can still type freely)
+  suggestionOptions?: string[]
   // For multi_text: add button text
   addButtonText?: string
   // For multi_text: max items

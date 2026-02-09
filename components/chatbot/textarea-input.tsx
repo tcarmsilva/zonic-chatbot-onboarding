@@ -32,6 +32,10 @@ interface TextareaInputProps {
   className?: string
   /** Variables the user can insert into the text (e.g. {{nome}}) - rendered as non-editable blue tags */
   insertableVariables?: { label: string; value: string }[]
+  /** Hide the emoji picker button */
+  hideEmoji?: boolean
+  /** Clickable options that append text to the input (user can still type freely) */
+  suggestionOptions?: string[]
 }
 
 export function TextareaInput({
@@ -43,6 +47,8 @@ export function TextareaInput({
   defaultValue,
   className,
   insertableVariables,
+  hideEmoji,
+  suggestionOptions,
 }: TextareaInputProps) {
   const [value, setValue] = useState(defaultValue || "")
   const [emojiOpen, setEmojiOpen] = useState(false)
@@ -133,6 +139,25 @@ export function TextareaInput({
     el.focus()
   }
 
+  const handleInsertSuggestion = (option: string) => {
+    if (hasVariables && editableRef.current) {
+      const el = editableRef.current
+      const currentText = getTextFromEditable()
+      const separator = currentText.trim() ? ", " : ""
+      const newText = currentText + separator + option
+      el.innerHTML = buildContentWithVariableSpans(newText)
+      setValue(newText)
+      el.focus()
+    } else {
+      setValue((prev) => {
+        const current = prev.trim()
+        const separator = current ? ", " : ""
+        return prev + separator + option
+      })
+      setTimeout(() => textareaRef.current?.focus(), 0)
+    }
+  }
+
   const handleInsertEmoji = (emoji: string, closePopover?: () => void) => {
     if (hasVariables && editableRef.current) {
       const el = editableRef.current
@@ -193,8 +218,26 @@ export function TextareaInput({
 
   const isEmpty = hasVariables ? !getTextFromEditable().trim() : !value.trim()
 
+  const hasSuggestions = suggestionOptions && suggestionOptions.length > 0
+
   return (
     <div className={cn("space-y-2", className)}>
+      {hasSuggestions && (
+        <div className="flex flex-wrap gap-2">
+          {suggestionOptions!.map((option) => (
+            <Button
+              key={option}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="rounded-full text-xs bg-white border-[#0051fe]/50 text-[#0051fe] hover:bg-[#0051fe]/10 hover:border-[#0051fe]/70"
+              onClick={() => handleInsertSuggestion(option)}
+            >
+              {option}
+            </Button>
+          ))}
+        </div>
+      )}
       <div className="rounded-2xl border-2 border-[#0051fe] bg-white/60 p-3">
         {hasVariables ? (
           <div
@@ -225,39 +268,41 @@ export function TextareaInput({
         )}
         
         <div className={cn("flex flex-wrap items-center gap-1.5 mt-2", !hasVariables && "pt-0")}>
-          <Popover.Root open={emojiOpen} onOpenChange={setEmojiOpen}>
-            <Popover.Trigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="rounded-full text-xs bg-white border-[#0051fe]/50 text-[#0051fe] hover:bg-[#0051fe]/10 hover:border-[#0051fe]/70 size-8 p-0"
-                aria-label="Escolher emoji"
-              >
-                <Smile className="size-4" />
-              </Button>
-            </Popover.Trigger>
-            <Popover.Portal>
-              <Popover.Content
-                className="rounded-xl border border-[#0051fe]/20 bg-white p-2 shadow-lg w-[280px] z-50"
-                sideOffset={6}
-                align="start"
-              >
-                <div className="grid grid-cols-10 gap-0.5 max-h-[200px] overflow-y-auto">
-                  {EMOJI_LIST.map((e) => (
-                    <button
-                      key={e}
-                      type="button"
-                      className="rounded p-1.5 text-lg hover:bg-[#0051fe]/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0051fe]/30 focus:ring-offset-1"
-                      onClick={() => handleInsertEmoji(e, () => setEmojiOpen(false))}
-                    >
-                      {e}
-                    </button>
-                  ))}
-                </div>
-              </Popover.Content>
-            </Popover.Portal>
-          </Popover.Root>
+          {!hideEmoji && (
+            <Popover.Root open={emojiOpen} onOpenChange={setEmojiOpen}>
+              <Popover.Trigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full text-xs bg-white border-[#0051fe]/50 text-[#0051fe] hover:bg-[#0051fe]/10 hover:border-[#0051fe]/70 size-8 p-0"
+                  aria-label="Escolher emoji"
+                >
+                  <Smile className="size-4" />
+                </Button>
+              </Popover.Trigger>
+              <Popover.Portal>
+                <Popover.Content
+                  className="rounded-xl border border-[#0051fe]/20 bg-white p-2 shadow-lg w-[280px] z-50"
+                  sideOffset={6}
+                  align="start"
+                >
+                  <div className="grid grid-cols-10 gap-0.5 max-h-[200px] overflow-y-auto">
+                    {EMOJI_LIST.map((e) => (
+                      <button
+                        key={e}
+                        type="button"
+                        className="rounded p-1.5 text-lg hover:bg-[#0051fe]/10 transition-colors focus:outline-none focus:ring-2 focus:ring-[#0051fe]/30 focus:ring-offset-1"
+                        onClick={() => handleInsertEmoji(e, () => setEmojiOpen(false))}
+                      >
+                        {e}
+                      </button>
+                    ))}
+                  </div>
+                </Popover.Content>
+              </Popover.Portal>
+            </Popover.Root>
+          )}
           {hasVariables && insertableVariables!.map((v) => (
             <Button
               key={v.value}

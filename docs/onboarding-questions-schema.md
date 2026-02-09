@@ -63,6 +63,8 @@ These **dataKeys** do **not** have their own column. They are stored as **keys i
 | `tasks` | textarea | text |
 | `is_clinic_pix_shared` | choices | value |
 | `accepted_payment_methods` | multi_select | array |
+| `has_payment_specifics` | choices | value (Sim/Não) |
+| `payment_specifics` | textarea | text (ex: só aceita crédito acima de R$ 500; 5% desconto no PIX) |
 | `is_health_insurance_accepted` | choices | value |
 | `health_insurances_accepted` | textarea | text |
 | `health_insurance_specifics` | textarea | text |
@@ -88,7 +90,6 @@ These **dataKeys** do **not** have their own column. They are stored as **keys i
 | `clinic_type` | choices | text |
 | `clinic_type_other` | text | text (conditional) |
 | `clinic_website` | text | text |
-| `lead_status_ai_activated` | multi_select | comma-separated or array |
 
 ### 2.3 `calendar_logic_json` (json)
 
@@ -123,7 +124,8 @@ These **dataKeys** do **not** have their own column. They are stored as **keys i
 | `metricas` | textarea | text |
 | `onboarding_rating` | rating | value |
 | `onboarding_rating_feedback` | textarea | text |
-| **schedule_event** | (agendamento Cal.com) | object | Dados completos do agendamento (resposta da API Cal.com), gravado quando o usuário agenda no fluxo de onboarding. |
+| `lead_status_ai_activated` | (from followup_stages) | array (etapas em azul = IA ligada) |
+| **schedule_event** | (agendamento Cal.com) | object | Dados completos do agendamento (resposta da API Cal.com), gravado na coluna **schedule_event_json** quando o usuário agenda no fluxo de onboarding. |
 
 ---
 
@@ -131,13 +133,13 @@ These **dataKeys** do **not** have their own column. They are stored as **keys i
 
 | Storage | dataKeys |
 |---------|----------|
-| **Dedicated columns** | clinic_name→name, clinic_whatsapp_phone→phone, clinic_timezone→timezone, clinic_address→address, clinic_google_maps_link→google_maps_link, instagram_links, operating_hours→operating_hours+opening_hours+availability_blocks, parking, assistant_name, bot_reply_to, is_group_bot_activated, is_voice_reply_activated, conversation_flow→template_type, conversation_style→communication_style, crm_provider, is_ai_allow_to_book_appointments, is_booking_reminders_activated, booking_reminder_today, booking_reminder_tomorrow, deactivate_on_human_reply, ai_reactivation_interval, deactivation_schedule→deactivation_schedule+availability_blocks, is_smart_followups_activated, reactivation_lead_status_ids, clinic_notification_phone |
-| **custom_instructions_inputs** | greeting, ai_assistant_role, conversation_flow (copy), needs_review, tasks, is_clinic_pix_shared, accepted_payment_methods, is_health_insurance_accepted, health_insurances_accepted, health_insurance_specifics, if_booking_fails_send_needs_review, capture_info, is_ai_allowed_to_send_product_prices, is_ai_allowed_to_send_product_pictures, hot_lead, notification, when_lost_lead, clinic_pix_key |
-| **client_data** | project_responsible_role, project_responsible_name, project_responsible_phone, project_responsible_email, platform_users, clinic_cnpj, clinic_type, clinic_type_other, clinic_website, lead_status_ai_activated |
+| **Dedicated columns** | clinic_name→name, clinic_whatsapp_phone→phone, clinic_timezone→timezone, clinic_address→address, clinic_google_maps_link→google_maps_link, instagram_links, operating_hours→operating_hours+opening_hours+availability_blocks, parking, assistant_name, bot_reply_to, is_group_bot_activated, is_voice_reply_activated, conversation_flow→template_type, conversation_style→communication_style, crm_provider, is_ai_allow_to_book_appointments, is_booking_reminders_activated, booking_reminder_today, booking_reminder_tomorrow, deactivate_on_human_reply, ai_reactivation_interval, deactivation_schedule→deactivation_schedule+availability_blocks, is_smart_followups_activated, reactivation_lead_status_ids, clinic_notification_phone, **schedule_event→schedule_event_json** |
+| **custom_instructions_inputs** | greeting, ai_assistant_role, conversation_flow (copy), needs_review, tasks, is_clinic_pix_shared, accepted_payment_methods, has_payment_specifics, payment_specifics, is_health_insurance_accepted, health_insurances_accepted, health_insurance_specifics, if_booking_fails_send_needs_review, capture_info, is_ai_allowed_to_send_product_prices, is_ai_allowed_to_send_product_pictures, hot_lead, notification, when_lost_lead, clinic_pix_key |
+| **client_data** | project_responsible_role, project_responsible_name, project_responsible_phone, project_responsible_email, platform_users, clinic_cnpj, clinic_type, clinic_type_other, clinic_website |
 | **calendar_logic_json** | crm_provider_other, booking_permission_specificity, is_ai_allow_to_book_appointments_raw |
 | **products** | how_many_doctors, how_many_products |
 | **pain_points** | main_pain_points |
-| **onboarding_data** | ads, familiar_to_crm, import_contacts, import_ai_off_contacts, extra_infos, metricas, onboarding_rating, onboarding_rating_feedback, **schedule_event** (objeto do agendamento) |
+| **onboarding_data** | ads, familiar_to_crm, import_contacts, import_ai_off_contacts, extra_infos, metricas, onboarding_rating, onboarding_rating_feedback, lead_status_ai_activated |
 
 ---
 
@@ -163,6 +165,6 @@ These **dataKeys** do **not** have their own column. They are stored as **keys i
 
 - Column: **text[]**. Stored as array of strings (e.g. "@user (clínica)").
 
-### Agendamento (`schedule_event` em `onboarding_data`)
+### Agendamento (coluna `schedule_event_json`)
 
-- Quando o usuário agenda no calendário do onboarding, as informações completas do agendamento (resposta da API Cal.com) são salvas na coluna **onboarding_data** da tabela **chatbot_onboarding**, na chave **schedule_event** (objeto com uid, start, etc.).
+- Quando o usuário agenda no calendário do onboarding, as informações completas do agendamento (resposta da API Cal.com) são salvas na coluna **schedule_event_json** (jsonb) da tabela **chatbot_onboarding** (objeto com uid, start, etc.).

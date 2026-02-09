@@ -1,4 +1,5 @@
 import type { ChatbotConfig } from "@/lib/chatbot-config"
+import { getFlowCustomizationText } from "@/components/chatbot/conversation-flow-select"
 
 // ============================================
 // CONFIGURAÇÃO DO CHATBOT DE ONBOARDING
@@ -201,7 +202,7 @@ export const chatConfig: ChatbotConfig = {
       type: "text",
       botMessage: "Qual o valor do estacionamento?",
       placeholder: "Ex: R$ 10, R$ 15 por hora",
-      dataKey: "parking",
+      dataKey: "parking_value",
       trackingEvent: "parking_value",
       showIf: (userData) =>
         userData.parking === "Sim, pago" || userData.parking === "Sim, conveniado",
@@ -233,6 +234,39 @@ export const chatConfig: ChatbotConfig = {
       trackingEvent: "accepted_payment_methods",
     },
     {
+      id: "has_payment_specifics",
+      type: "choices",
+      botMessage: "Tem alguma especificidade sobre os pagamentos? (ex: só aceita crédito acima de R$ 500 ou 5% de desconto no PIX)",
+      options: ["Sim", "Não"],
+      dataKey: "has_payment_specifics",
+      trackingEvent: "has_payment_specifics",
+    },
+    {
+      id: "payment_specifics",
+      type: "textarea",
+      botMessage: "Descreva as especificidades sobre os pagamentos.",
+      placeholder: "Ex: só aceita crédito acima de R$ 500; 5% de desconto no PIX",
+      dataKey: "payment_specifics",
+      trackingEvent: "payment_specifics",
+      hideEmoji: true,
+      showIf: (userData) => userData.has_payment_specifics === "Sim",
+    },
+    {
+      id: "clinic_specialties",
+      type: "textarea",
+      botMessage: (
+        <div className="space-y-2">
+          <p>Quais são as especialidades da sua clínica?</p>
+          <p className="text-sm text-[#04152b]/70">Escreva de forma sucinta (ex: Dermatologia, Harmonização facial, Odontologia estética).</p>
+        </div>
+      ),
+      placeholder: "Ex: Dermatologia, Harmonização facial, Odontologia estética",
+      helpText: "Seja sucinto na resposta",
+      hideEmoji: true,
+      dataKey: "clinic_specialties",
+      trackingEvent: "clinic_specialties",
+    },
+    {
       id: "is_health_insurance_accepted",
       type: "choices",
       botMessage: "A sua clínica aceita plano de saúde?",
@@ -247,6 +281,7 @@ export const chatConfig: ChatbotConfig = {
       placeholder: "Ex: Unimed, Bradesco Saúde, SulAmérica...",
       dataKey: "health_insurances_accepted",
       trackingEvent: "health_insurances_accepted",
+      hideEmoji: true,
       showIf: (userData) => userData.is_health_insurance_accepted === "Sim",
     },
     {
@@ -256,6 +291,7 @@ export const chatConfig: ChatbotConfig = {
       placeholder: "Ex: Unimed apenas para consultas; Bradesco para todos os procedimentos...",
       dataKey: "health_insurance_specifics",
       trackingEvent: "health_insurance_specifics",
+      hideEmoji: true,
       showIf: (userData) => userData.is_health_insurance_accepted === "Sim",
     },
 
@@ -336,6 +372,18 @@ export const chatConfig: ChatbotConfig = {
       trackingEvent: "is_voice_reply_activated",
     },
     {
+      id: "conversation_style",
+      type: "conversation_style",
+      botMessage: (
+        <div className="space-y-2">
+          <p>Qual tipo de comunicação você quer que a sua IA tenha?</p>
+          <p className="text-sm text-[#04152b]/70">Veja os exemplos de cada estilo para entender melhor:</p>
+        </div>
+      ),
+      dataKey: "conversation_style",
+      trackingEvent: "conversation_style",
+    },
+    {
       id: "conversation_flow",
       type: "conversation_flow",
       botMessage: (
@@ -348,16 +396,91 @@ export const chatConfig: ChatbotConfig = {
       trackingEvent: "conversation_flow",
     },
     {
-      id: "conversation_style",
-      type: "conversation_style",
+      id: "conversation_flow_customization",
+      type: "textarea",
       botMessage: (
         <div className="space-y-2">
-          <p>Qual tipo de comunicação você quer que a sua IA tenha?</p>
-          <p className="text-sm text-[#04152b]/70">Veja os exemplos de cada estilo para entender melhor:</p>
+          <p>Personalize o fluxo de conversa da sua IA!</p>
+          <p className="text-sm text-[#04152b]/70">Abaixo está o roteiro padrão do fluxo que você selecionou. Edite como quiser para adaptar ao seu atendimento.</p>
         </div>
       ),
-      dataKey: "conversation_style",
-      trackingEvent: "conversation_style",
+      placeholder: "Descreva como quer que a conversa funcione...",
+      helpText: "Edite livremente para personalizar o fluxo da sua IA",
+      minLines: 12,
+      maxLines: 20,
+      defaultValue: (userData: Record<string, string>) => {
+        return getFlowCustomizationText(userData.conversation_flow || "")
+      },
+      dataKey: "conversation_flow_customization",
+      trackingEvent: "conversation_flow_customization",
+    },
+    {
+      id: "capture_info",
+      type: "capture_info",
+      botMessage: (
+        <div className="space-y-2">
+          <p>Quais informações você quer que a IA pergunte aos leads <strong>ANTES</strong> de agendar?</p>
+          <p className="text-sm text-[#04152b]/70">Selecione as perguntas que desejar ou crie a sua própria:</p>
+        </div>
+      ),
+      dataKey: "capture_info",
+      trackingEvent: "capture_info",
+    },
+    {
+      id: "patient_pain_points",
+      type: "multi_select_with_custom",
+      botMessage: (
+        <div className="space-y-2">
+          <p>Quais as principais dores que os pacientes vão resolver na sua clínica?</p>
+          <p className="text-sm text-[#04152b]/70">Selecione as opções que se aplicam e/ou crie opções personalizadas (até 10).</p>
+        </div>
+      ),
+      options: [
+        "Agendar consulta",
+        "Agendar exame",
+        "Agendar retorno",
+        "Rugas",
+        "Flacidez",
+        "Gordura localizada",
+        "Emagrecimento",
+        "Alinhamento dental",
+        "Facetas dentais",
+        "Clareamento dental",
+      ],
+      maxSelect: 10,
+      dataKey: "patient_pain_points",
+      trackingEvent: "patient_pain_points",
+    },
+    {
+      id: "clinic_products",
+      type: "products_input",
+      botMessage: (
+        <div className="space-y-2">
+          <p>Quais produtos e serviços a sua clínica oferece?</p>
+          <p className="text-sm text-[#04152b]/70">Selecione até 5 da lista e/ou crie até 5 personalizados. Na plataforma, você poderá adicionar quantos quiser. Para cada produto, você pode configurar se o preço será exibido.</p>
+        </div>
+      ),
+      options: [
+        "Toxina botulínica (Botox)",
+        "Preenchimento facial",
+        "Harmonização facial",
+        "Clareamento dental",
+        "Limpeza de pele",
+        "Peeling químico",
+        "Microagulhamento",
+        "Depilação a laser",
+        "Bioestimulador de colágeno",
+        "Fios de PDO",
+        "Consulta dermatológica",
+        "Consulta oftalmológica",
+        "Consulta ginecológica",
+        "Implante dentário",
+        "Lente de contato dental",
+      ],
+      maxSelect: 5,
+      maxItems: 5,
+      dataKey: "clinic_products",
+      trackingEvent: "clinic_products",
     },
     {
       id: "is_ai_allowed_to_send_product_prices",
@@ -453,18 +576,6 @@ export const chatConfig: ChatbotConfig = {
       trackingEvent: "if_booking_fails_send_needs_review",
     },
     {
-      id: "capture_info",
-      type: "capture_info",
-      botMessage: (
-        <div className="space-y-2">
-          <p>Quais informações você quer que a IA pergunte aos leads <strong>ANTES</strong> de agendar?</p>
-          <p className="text-sm text-[#04152b]/70">Por exemplo: idade, plano de saúde, CPF, etc. Para cada pergunta, você pode definir quais respostas são aceitas (se houver restrição).</p>
-        </div>
-      ),
-      dataKey: "capture_info",
-      trackingEvent: "capture_info",
-    },
-    {
       id: "is_booking_reminders_activated",
       type: "choices",
       botMessage: "Você quer que a Zonic envie lembretes automáticos de consulta para os pacientes?",
@@ -483,6 +594,7 @@ export const chatConfig: ChatbotConfig = {
       ),
       placeholder: "Ex: Olá! Lembrando que sua consulta é hoje às {horario}. Te esperamos!",
       helpText: "Use {nome}, {data}, {horario} para personalizar",
+      insertableVariables: [{ label: "Nome", value: "{{nome}}" }],
       dataKey: "booking_reminder_today",
       trackingEvent: "booking_reminder_today",
       showIf: (userData) => userData.is_booking_reminders_activated === "Sim",
@@ -493,6 +605,7 @@ export const chatConfig: ChatbotConfig = {
       botMessage: "E qual mensagem você quer que seja enviada 1 dia antes da consulta?",
       placeholder: "Ex: Olá {nome}! Amanhã você tem consulta às {horario}. Confirma presença?",
       helpText: "Use {nome}, {data}, {horario} para personalizar",
+      insertableVariables: [{ label: "Nome", value: "{{nome}}" }],
       dataKey: "booking_reminder_tomorrow",
       trackingEvent: "booking_reminder_tomorrow",
       showIf: (userData) => userData.is_booking_reminders_activated === "Sim",
@@ -547,45 +660,17 @@ export const chatConfig: ChatbotConfig = {
       trackingEvent: "is_smart_followups_activated",
     },
     {
-      id: "reactivation_lead_status_ids",
-      type: "multi_select",
-      botMessage: "Em quais etapas do funil de vendas a IA deve ser reativada automaticamente? Selecione todas que se aplicam.",
-      options: [
-        "Novo Lead",
-        "Em Contato",
-        "Interessado",
-        "Quer Agendar",
-        "Não Compareceu",
-        "Agendado",
-        "Disposto a Comprar",
-        "Comprou",
-      ],
-      minSelect: 1,
-      dataKey: "reactivation_lead_status_ids",
-      trackingEvent: "reactivation_lead_status_ids",
-    },
-    {
-      id: "lead_status_ai_activated",
-      type: "multi_select",
+      id: "followup_stages",
+      type: "followup_stages",
       botMessage: (
         <div className="space-y-2">
-          <p>Em quais etapas do funil de vendas você quer que a IA <strong>pare automaticamente</strong> de responder leads?</p>
-          <p className="text-sm text-[#04152b]/70">Por exemplo, ao agendar ou ao comprar, a IA pode parar de responder para que as atendentes assumam o atendimento.</p>
+          <p>Em quais etapas do funil de vendas a IA deve fazer <strong>follow-up</strong> (resgatar e reengajar leads)?</p>
+          <p className="text-sm text-[#04152b]/70">Clique nas etapas para ativar ou desativar. Em azul a IA vai fazer follow-up, em vermelho não vai.</p>
+          <p className="text-sm text-[#04152b]/70 italic">Os lembretes de agendamento não são afetados pela escolha deste item.</p>
         </div>
       ),
-      options: [
-        "Novo Lead",
-        "Em Contato",
-        "Interessado",
-        "Quer Agendar",
-        "Não Compareceu",
-        "Agendado",
-        "Disposto a Comprar",
-        "Comprou",
-      ],
-      minSelect: 1,
-      dataKey: "lead_status_ai_activated",
-      trackingEvent: "lead_status_ai_activated",
+      dataKey: "followup_stages",
+      trackingEvent: "followup_stages",
     },
 
     // ============================================
@@ -593,45 +678,16 @@ export const chatConfig: ChatbotConfig = {
     // ============================================
     {
       id: "how_many_doctors",
-      type: "number",
+      type: "doctors_list",
       botMessage: (
         <div className="space-y-2">
           <p>Agora algumas perguntas sobre a estrutura da sua clínica! 🏥</p>
-          <p>Quantos doutores/profissionais atendem na sua clínica?</p>
+          <p>Liste os doutores/profissionais que atendem na sua clínica e suas especialidades:</p>
         </div>
       ),
-      placeholder: "Quantidade",
-      minValue: 1,
-      maxValue: 500,
       dataKey: "how_many_doctors",
       trackingEvent: "how_many_doctors",
     },
-    {
-      id: "how_many_products",
-      type: "number",
-      botMessage: "Quantos tipos de consultas, procedimentos ou tratamentos a IA vai poder responder dúvidas, enviar preços ou agendar?",
-      placeholder: "Quantidade",
-      minValue: 1,
-      maxValue: 200,
-      dataKey: "how_many_products",
-      trackingEvent: "how_many_products",
-    },
-    {
-      id: "main_pain_points",
-      type: "multi_text",
-      botMessage: (
-        <div className="space-y-2">
-          <p>Quais são as principais dores/problemas que seus pacientes têm?</p>
-          <p className="text-sm text-[#04152b]/70">Liste até 10 dores que a IA deve saber identificar nas conversas.</p>
-        </div>
-      ),
-      placeholder: "Ex: Acne, rugas, flacidez...",
-      addButtonText: "Adicionar outra dor",
-      maxItems: 10,
-      dataKey: "main_pain_points",
-      trackingEvent: "main_pain_points",
-    },
-
     // ============================================
     // SEÇÃO 6: QUALIFICAÇÃO DE LEADS
     // ============================================
@@ -746,6 +802,13 @@ export const chatConfig: ChatbotConfig = {
       ),
       placeholder: "Ex: Quando desiste do tratamento, quando escolhe outra clínica, quando pede para parar de enviar mensagens...",
       helpText: "Descreva as situações que caracterizam lead perdido",
+      suggestionOptions: [
+        "Quando desiste do tratamento",
+        "Quando escolhe outra clínica",
+        "Quando pede para parar de enviar mensagens",
+        "Quando não responde após várias tentativas",
+        "Quando informa que não tem mais interesse",
+      ],
       dataKey: "when_lost_lead",
       trackingEvent: "when_lost_lead",
     },

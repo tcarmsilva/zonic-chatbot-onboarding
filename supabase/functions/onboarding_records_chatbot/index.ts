@@ -217,49 +217,6 @@ function operatingHoursToAvailabilityBlocks(
   return blocks;
 }
 
-// Convert deactivation schedule (day -> { start_h, end_h }) to availability_blocks format:
-// [{ rrule: "FREQ=WEEKLY;BYDAY=MO,TU,...", start_time: "09:00", end_time: "18:00" }]
-function deactivationScheduleToAvailabilityBlocks(
-  schedule: Record<string, { start_h: number; end_h: number }>
-): { rrule: string; start_time: string; end_time: string }[] {
-  const blocks: { rrule: string; start_time: string; end_time: string }[] = [];
-  const enabledSlots: { day: string; start_time: string; end_time: string }[] = [];
-
-  for (const dayKey of DAY_ORDER) {
-    const day = schedule[dayKey];
-    if (day && typeof day.start_h === "number" && typeof day.end_h === "number") {
-      const start_time = `${String(day.start_h).padStart(2, "0")}:00`;
-      const end_time = `${String(day.end_h).padStart(2, "0")}:00`;
-      enabledSlots.push({ day: dayKey, start_time, end_time });
-    }
-  }
-
-  let i = 0;
-  while (i < enabledSlots.length) {
-    const slot = enabledSlots[i];
-    const days: string[] = [DAY_TO_RRULE[slot.day]];
-    let j = i + 1;
-    const dayIndex = (d: string) => DAY_ORDER.indexOf(d);
-    while (
-      j < enabledSlots.length &&
-      enabledSlots[j].start_time === slot.start_time &&
-      enabledSlots[j].end_time === slot.end_time &&
-      dayIndex(enabledSlots[j].day) === dayIndex(enabledSlots[j - 1].day) + 1
-    ) {
-      days.push(DAY_TO_RRULE[enabledSlots[j].day]);
-      j++;
-    }
-    blocks.push({
-      rrule: `FREQ=WEEKLY;BYDAY=${days.join(",")}`,
-      start_time: slot.start_time,
-      end_time: slot.end_time,
-    });
-    i = j;
-  }
-
-  return blocks;
-}
-
 // Parse deactivation schedule (retorna objeto day -> { start_h, end_h } para coluna deactivation_schedule)
 function parseDeactivationSchedule(value: string | unknown): Record<string, { start_h: number; end_h: number }> | null {
   const parsed = typeof value === 'string' ? parseJsonSafe(value) : value;
@@ -384,9 +341,13 @@ const CUSTOM_INSTRUCTIONS_FIELDS = new Set([
   "conversation_flow",
   "needs_review",
   "tasks",
+  // Clinic specialties
+  "clinic_specialties",
   // Payment and health insurance info
   "is_clinic_pix_shared",
   "accepted_payment_methods",
+  "has_payment_specifics",
+  "payment_specifics",
   "is_health_insurance_accepted",
   "health_insurances_accepted",
   "health_insurance_specifics",
@@ -403,6 +364,8 @@ const CUSTOM_INSTRUCTIONS_FIELDS = new Set([
   "when_lost_lead",
   // PIX
   "clinic_pix_key",
+  // Conversation flow customization
+  "conversation_flow_customization",
 ]);
 
 // calendar_logic_json: Calendar and booking settings (booking_permission_* definidos no handler is_ai_allow_to_book_appointments)
@@ -413,6 +376,7 @@ const CALENDAR_LOGIC_FIELDS = new Set([
 // client_data: Client/clinic information
 const CLIENT_DATA_FIELDS = new Set([
   "project_responsible_role",
+  "project_responsible_details",
   "project_responsible_name",
   "project_responsible_phone",
   "project_responsible_email",
@@ -423,22 +387,21 @@ const CLIENT_DATA_FIELDS = new Set([
   "clinic_type",
   "clinic_type_other",
   "clinic_website",
-  "lead_status_ai_activated",
 ]);
 
 // products: Product/service information
 const PRODUCTS_FIELDS = new Set([
-  "how_many_products",
-  "how_many_doctors",
+  "clinic_products",
 ]);
 
 // pain_points: Customer pain points
 const PAIN_POINTS_FIELDS = new Set([
   "main_pain_points",
+  "patient_pain_points",
 ]);
 
 // onboarding_data: General onboarding data (notification e when_lost_lead vão em custom_instructions_inputs)
-// schedule_event: objeto do agendamento Cal.com (frontend envia via updateOnboardingRecord após usuário agendar)
+// schedule_event é gravado na coluna schedule_event_json (não em onboarding_data)
 const ONBOARDING_DATA_FIELDS = new Set([
   "ads",
   // CRM familiarity and imports
@@ -449,7 +412,10 @@ const ONBOARDING_DATA_FIELDS = new Set([
   "metricas",
   "onboarding_rating",
   "onboarding_rating_feedback",
-  "schedule_event", // agendamento: objeto com uid, start, etc. da API Cal.com
+  // Doctors/professionals list
+  "how_many_doctors",
+  // Stages where AI follow-up is ON (blue stages)
+  "lead_status_ai_activated",
 ]);
 
 // Instagram links (special handling for text[])
@@ -514,12 +480,18 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       hasClinicInfoField = true;
     }
     
-    // deactivation_schedule: coluna deactivation_schedule (objeto) + availability_blocks sempre no formato array
+    // deactivation_schedule: coluna deactivation_schedule (objeto json)
     if (key === "deactivation_schedule") {
       const parsed = parseDeactivationSchedule(value);
       payload.deactivation_schedule = parsed;
-      if (parsed !== null) {
-        payload.availability_blocks = deactivationScheduleToAvailabilityBlocks(parsed);
+      continue;
+    }
+
+    // schedule_event: objeto do agendamento Cal.com -> coluna schedule_event_json (json)
+    if (key === "schedule_event") {
+      const parsed = typeof value === "object" && value !== null ? value : parseJsonSafe(value);
+      if (parsed && typeof parsed === "object") {
+        payload.schedule_event_json = parsed;
       }
       continue;
     }
@@ -543,6 +515,18 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       continue;
     }
     
+    // parking_value: combinar com o valor existente de parking (ex: "Sim, pago - R$ 10")
+    if (key === "parking_value") {
+      const existingParking = (data.parking as string) || (existingRecord?.parking as string) || "";
+      const parkingValue = sanitizeString(value);
+      if (existingParking && parkingValue) {
+        payload.parking = `${existingParking} - ${parkingValue}`;
+      } else if (parkingValue) {
+        payload.parking = parkingValue;
+      }
+      continue;
+    }
+
     // Handle phone fields
     if (PHONE_FIELDS[key]) {
       const phoneNumber = phoneToNumber(String(value));
@@ -567,6 +551,21 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       continue;
     }
     
+    // Handle followup_stages (unified question) -> splits into reactivation_lead_status_ids + lead_status_ai_activated
+    if (key === "followup_stages") {
+      const parsed = parseJsonSafe(value);
+      if (parsed && typeof parsed === "object") {
+        const obj = parsed as { followup_on?: string[]; followup_off?: string[] };
+        // followup_on (blue stages) -> reactivation_lead_status_ids (int4[] column) + lead_status_ai_activated (onboarding_data)
+        if (obj.followup_on) {
+          payload.reactivation_lead_status_ids = leadStatusToIds(obj.followup_on);
+          onboardingData.lead_status_ai_activated = obj.followup_on;
+          hasOnboardingDataChanges = true;
+        }
+      }
+      continue;
+    }
+
     // Handle direct column mappings
     if (DIRECT_COLUMN_MAP[key]) {
       const columnName = DIRECT_COLUMN_MAP[key];

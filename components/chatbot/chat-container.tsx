@@ -27,6 +27,10 @@ import { InstagramInput } from "./instagram-input"
 import { CnpjInput } from "./cnpj-input"
 import { RatingInput } from "./rating-input"
 import { HotLeadInput } from "./hot-lead-input"
+import { MultiSelectWithCustom } from "./multi-select-with-custom"
+import { ProductsInput } from "./products-input"
+import { DoctorsListInput } from "./doctors-list-input"
+import { FollowupStagesSelect } from "./followup-stages-select"
 import { CalendarScheduler } from "./calendar-scheduler"
 import { TypingIndicator } from "./typing-indicator"
 import { ResumePrompt } from "./resume-prompt"
@@ -84,6 +88,10 @@ export function ChatContainer({ config }: ChatContainerProps) {
   const [showCnpj, setShowCnpj] = useState(false)
   const [showRating, setShowRating] = useState(false)
   const [showHotLead, setShowHotLead] = useState(false)
+  const [showMultiSelectWithCustom, setShowMultiSelectWithCustom] = useState(false)
+  const [showProductsInput, setShowProductsInput] = useState(false)
+  const [showDoctorsList, setShowDoctorsList] = useState(false)
+  const [showFollowupStages, setShowFollowupStages] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
   const [userData, setUserData] = useState<Record<string, string>>({})
   const [welcomeComplete, setWelcomeComplete] = useState(false)
@@ -228,7 +236,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
       return
     }
     scrollToBottom()
-  }, [messagesLength, messagesLastId, isTyping, showInput, showChoices, showMultiSelect, showTimezone, showOperatingHours, showDeactivationSchedule, showNumber, showTextarea, showMultiText, showConversationFlow, showConversationStyle, showCaptureInfo, showTeamMembers, showSingleRoleChoice, showProjectResponsibleDetails, showInstagram, showCnpj, showRating, showHotLead, showCalendar])
+  }, [messagesLength, messagesLastId, isTyping, showInput, showChoices, showMultiSelect, showTimezone, showOperatingHours, showDeactivationSchedule, showNumber, showTextarea, showMultiText, showConversationFlow, showConversationStyle, showCaptureInfo, showTeamMembers, showSingleRoleChoice, showProjectResponsibleDetails, showInstagram, showCnpj, showRating, showHotLead, showMultiSelectWithCustom, showProductsInput, showFollowupStages, showDoctorsList, showCalendar])
 
   const addBotMessage = (content: string | React.ReactNode, showAvatar = true) => {
     setMessages((prev) => [
@@ -281,6 +289,10 @@ export function ChatContainer({ config }: ChatContainerProps) {
     setShowCnpj(false)
     setShowRating(false)
     setShowHotLead(false)
+    setShowMultiSelectWithCustom(false)
+    setShowProductsInput(false)
+    setShowDoctorsList(false)
+    setShowFollowupStages(false)
     setShowCalendar(false)
   }
 
@@ -406,6 +418,18 @@ export function ChatContainer({ config }: ChatContainerProps) {
       case "hot_lead":
         setShowHotLead(true)
         break
+      case "multi_select_with_custom":
+        setShowMultiSelectWithCustom(true)
+        break
+      case "products_input":
+        setShowProductsInput(true)
+        break
+      case "doctors_list":
+        setShowDoctorsList(true)
+        break
+      case "followup_stages":
+        setShowFollowupStages(true)
+        break
       default:
         setShowInput(true)
         break
@@ -461,6 +485,65 @@ export function ChatContainer({ config }: ChatContainerProps) {
     // For certain types we store JSON but show a readable summary in the chat
     let displayMessage: string = value
     
+    // Multi select with custom display
+    if (step.type === "multi_select_with_custom") {
+      try {
+        const parsed = JSON.parse(value) as { selected?: string[]; custom?: string[] }
+        const all = [...(parsed.selected || []), ...(parsed.custom || [])]
+        if (all.length) displayMessage = all.join(", ")
+      } catch {
+        // keep raw value if not valid JSON
+      }
+    }
+
+    // Products input display
+    if (step.type === "products_input") {
+      try {
+        const parsed = JSON.parse(value) as Array<{ name: string; showPrice: boolean; priceType: string; price: string; priceMin: string; priceMax: string }>
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          displayMessage = parsed.map(p => {
+            let line = p.name
+            if (p.showPrice) {
+              if (p.priceType === "fixed" && p.price) line += ` (R$ ${p.price})`
+              else if (p.priceType === "range" && (p.priceMin || p.priceMax)) line += ` (R$ ${p.priceMin || "?"} - R$ ${p.priceMax || "?"})`
+            }
+            return line
+          }).join("\n")
+        }
+      } catch {
+        // keep raw value if not valid JSON
+      }
+    }
+
+    // Doctors list display
+    if (step.type === "doctors_list") {
+      try {
+        const parsed = JSON.parse(value) as Array<{ name: string; specialty: string }>
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          displayMessage = parsed.map(d => {
+            let line = d.name
+            if (d.specialty) line += ` — ${d.specialty}`
+            return line
+          }).join("\n")
+        }
+      } catch {
+        // keep raw value if not valid JSON
+      }
+    }
+
+    // Followup stages display
+    if (step.type === "followup_stages") {
+      try {
+        const parsed = JSON.parse(value) as { followup_on?: string[]; followup_off?: string[] }
+        const parts: string[] = []
+        if (parsed.followup_on?.length) parts.push(`Follow-up ligado: ${parsed.followup_on.join(", ")}`)
+        if (parsed.followup_off?.length) parts.push(`Follow-up desligado: ${parsed.followup_off.join(", ")}`)
+        if (parts.length) displayMessage = parts.join("\n")
+      } catch {
+        // keep raw value if not valid JSON
+      }
+    }
+
     // Hot lead display
     if (step.type === "hot_lead") {
       try {
@@ -568,9 +651,21 @@ export function ChatContainer({ config }: ChatContainerProps) {
       ? JSON.stringify({ option: userData.parking, value })
       : value
 
-    // Save data (project_responsible_details merges three keys; other steps use one dataKey)
+    // Save data (project_responsible_details merges three keys; followup_stages splits into two keys; other steps use one dataKey)
     let updatedUserData: Record<string, string>
-    if (step.type === "project_responsible_details") {
+    if (step.type === "followup_stages") {
+      try {
+        const parsed = JSON.parse(value) as { followup_on?: string[]; followup_off?: string[] }
+        updatedUserData = {
+          ...userData,
+          [step.dataKey]: value,
+          reactivation_lead_status_ids: (parsed.followup_on || []).join(", "),
+          lead_status_ai_activated: (parsed.followup_on || []).join(", "),
+        }
+      } catch {
+        updatedUserData = { ...userData, [step.dataKey]: value }
+      }
+    } else if (step.type === "project_responsible_details") {
       try {
         const parsed = JSON.parse(value) as Record<string, string>
         updatedUserData = { ...userData, ...parsed }
@@ -939,8 +1034,12 @@ export function ChatContainer({ config }: ChatContainerProps) {
                 onSubmit={handleSubmit}
                 placeholder={currentStep.placeholder}
                 helpText={currentStep.helpText}
-                defaultValue={userData[currentStep.dataKey] ?? currentStep.defaultValue}
+                defaultValue={userData[currentStep.dataKey] ?? (typeof currentStep.defaultValue === 'function' ? currentStep.defaultValue(userData) : currentStep.defaultValue)}
                 insertableVariables={currentStep.insertableVariables}
+                minLines={currentStep.minLines}
+                maxLines={currentStep.maxLines}
+                hideEmoji={!['greeting', 'booking_reminder_today', 'booking_reminder_tomorrow'].includes(currentStep.id)}
+                suggestionOptions={currentStep.suggestionOptions}
               />
             </div>
           )}
@@ -1021,13 +1120,56 @@ export function ChatContainer({ config }: ChatContainerProps) {
             </div>
           )}
 
+          {/* Multi Select With Custom */}
+          {showMultiSelectWithCustom && currentStep?.options && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
+              <MultiSelectWithCustom
+                options={currentStep.options}
+                onSubmit={handleSubmit}
+                maxSelect={currentStep.maxSelect || 10}
+                defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined}
+              />
+            </div>
+          )}
+
+          {/* Products Input */}
+          {showProductsInput && currentStep?.options && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
+              <ProductsInput
+                options={currentStep.options}
+                onSubmit={handleSubmit}
+                maxPreBuilt={currentStep.maxSelect || 5}
+                maxCustom={currentStep.maxItems || 5}
+                defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined}
+              />
+            </div>
+          )}
+
+          {/* Doctors List Input */}
+          {showDoctorsList && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4 px-4">
+              <DoctorsListInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
+            </div>
+          )}
+
+          {/* Followup Stages Select */}
+          {showFollowupStages && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
+              <FollowupStagesSelect
+                onSubmit={handleSubmit}
+                defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined}
+              />
+            </div>
+          )}
+
           {/* Go Back Button (below inline inputs) */}
           {currentStepIndex > 0 && !isComplete && !isTyping && (
             showChoices || showSingleRoleChoice || showProjectResponsibleDetails ||
             showMultiSelect || showTimezone || showOperatingHours || showDeactivationSchedule ||
             showNumber || showTextarea || showMultiText || showConversationFlow ||
             showConversationStyle || showCaptureInfo || showTeamMembers || showInstagram ||
-            showRating || showHotLead
+            showRating || showHotLead || showMultiSelectWithCustom || showProductsInput || showFollowupStages ||
+            showDoctorsList
           ) && (
             <div className="flex justify-center pt-2 pb-2">
               <button

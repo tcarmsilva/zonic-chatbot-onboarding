@@ -91,7 +91,6 @@ Campos sem coluna específica são agrupados em colunas JSON:
 - `capture_info`
 - `is_ai_allowed_to_send_product_prices`
 - `is_ai_allowed_to_send_product_pictures`
-- `lead_status_ai_activated`
 - `hot_lead`
 
 #### `calendar_logic_json`
@@ -119,6 +118,7 @@ Campos sem coluna específica são agrupados em colunas JSON:
 
 #### `onboarding_data`
 - `notification`
+- `lead_status_ai_activated` (etapas em azul = IA ligada, from followup_stages)
 - `ads`
 - `when_lost_lead`
 - `familiar_to_crm`

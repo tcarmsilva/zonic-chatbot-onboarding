@@ -20,7 +20,7 @@ function ChatBubble({
   isUser = false,
   imageUrl,
 }: {
-  text: string
+  text?: string
   isUser?: boolean
   imageUrl?: string
 }) {
@@ -51,7 +51,7 @@ function ChatBubble({
 function FlowPreview({
   messages,
 }: {
-  messages: Array<{ text: string; isUser?: boolean; imageUrl?: string }>
+  messages: Array<{ text?: string; isUser?: boolean; imageUrl?: string }>
 }) {
   return (
     <div className="bg-gray-50 rounded-lg p-2 space-y-1 min-h-[80px]">
@@ -133,6 +133,87 @@ const FLOW_OPTIONS = [
     ],
   },
 ]
+
+// Flow customization text templates (used for the textarea pre-fill)
+const FLOW_CUSTOMIZATION_TEXTS: Record<string, string> = {
+  "tipo_1": `IA: Bem-vindo(a) à Clínica X! Sou a assistente virtual Ana
+IA: Qual é o seu nome?
+Lead: Maria
+IA: Olá, Maria! Prazer 😊
+IA: O que você busca melhorar com mais urgência?
+• Rugas
+• Flacidez
+• Dor de dente
+• Alinhamento dental
+Lead: Rugas
+IA: Somos referência em tratamentos para rugas, então você está em boas mãos!
+IA: Para o tratamento de rugas, normalmente utilizamos toxina botulínica e preenchimento
+IA: Vou te enviar um exemplo de resultado para você ver como fica:
+IA: [Envia foto de antes e depois]
+IA: É esse tipo de resultado que você está buscando?
+Lead: Sim!
+IA: Perfeito! Recomendamos agendar uma avaliação com os nossos doutores para personalizarem o tratamento para o seu caso e também já te passarem um orçamento
+IA: Qual período do dia fica melhor para você? (manhã, tarde ou noite)
+Lead: Tarde
+IA: Amanhã à tarde: 14h, 15h ou 16h. Qual prefere?
+Lead: 15h
+IA: Agendado! ✅`,
+
+  "tipo_2": `IA: Bem-vindo(a) à Clínica X! Sou a assistente virtual Ana
+IA: Qual é o seu nome?
+Lead: Maria
+IA: Olá, Maria! Prazer 😊
+IA: Como posso te ajudar?
+• Agendar consulta
+• Marcar exame
+• Dúvidas
+Lead: Agendar consulta
+IA: Qual parte do dia você prefere? (manhã, tarde ou noite)
+Lead: Tarde
+IA: Tenho esses horários disponíveis para amanhã: 14h, 15h ou 16h
+IA: Qual fica melhor para você?
+Lead: 15h
+IA: Agendado! ✅`,
+
+  "tipo_3": `IA: Bem-vindo à Clínica X! Sou a assistente virtual Ana. Qual é o seu nome?
+Lead: Maria
+IA: Olá, Maria! 😊
+IA: Como posso ajudar?
+• Agendar consulta
+• Marcar exame
+• Dúvidas
+Lead: Agendar consulta
+IA: Perfeito! Vou te fazer algumas perguntas para podermos agendar, ok?
+IA: Qual sua idade?
+Lead: 35
+IA: Qual seu plano de saúde?
+Lead: Unimed
+IA: Qual o número da sua carteirinha?
+Lead: 123456
+IA: Qual parte do dia você prefere? (manhã, tarde ou noite)
+Lead: Tarde
+IA: Tenho esses horários disponíveis para amanhã: 14h, 15h ou 16h
+IA: Qual fica melhor para você?
+Lead: 15h
+IA: Agendado! ✅`,
+}
+
+/**
+ * Returns the customization text template for a given flow title.
+ * Used to pre-fill the conversation_flow_customization textarea.
+ */
+export function getFlowCustomizationText(flowTitle: string): string {
+  // Try to find by title match
+  const flow = FLOW_OPTIONS.find(f => f.title === flowTitle)
+  if (flow) {
+    return FLOW_CUSTOMIZATION_TEXTS[flow.id] || ""
+  }
+  // Try by ID directly
+  if (FLOW_CUSTOMIZATION_TEXTS[flowTitle]) {
+    return FLOW_CUSTOMIZATION_TEXTS[flowTitle]
+  }
+  return ""
+}
 
 export function ConversationFlowSelect({ onSubmit, defaultValue, className }: ConversationFlowSelectProps) {
   const [selected, setSelected] = useState<string | null>(

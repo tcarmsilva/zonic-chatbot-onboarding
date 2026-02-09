@@ -3,7 +3,7 @@
 import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, Plus, X, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowUp, Plus, X, ChevronDown, ChevronUp, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface CaptureInfoInputProps {
@@ -31,9 +31,12 @@ const SUGGESTED_QUESTIONS = [
 ]
 
 export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureInfoInputProps) {
+  // If there's a defaultValue, start with editing mode already open
+  const hasDefault = !!(defaultValue && defaultValue !== "Nenhuma informação adicional")
+
   const [items, setItems] = useState<InfoItem[]>(() => {
-    if (defaultValue && defaultValue !== "Nenhuma informação adicional") {
-      const lines = defaultValue.split("\n").filter(Boolean)
+    if (hasDefault) {
+      const lines = defaultValue!.split("\n").filter(Boolean)
       return lines.map((line, i) => {
         const match = line.match(/^(.+?):\s*\[Aceitos:\s*(.+?)\]$/)
         if (match) {
@@ -42,21 +45,30 @@ export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureI
         return { id: String(i + 1), question: line.trim(), acceptedValues: "", isExpanded: true }
       })
     }
-    return [{ id: "1", question: "", acceptedValues: "", isExpanded: true }]
+    return []
   })
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [showEditingFields, setShowEditingFields] = useState(hasDefault)
 
-  const addItem = () => {
-    setItems(prev => [
-      ...prev,
-      { id: Date.now().toString(), question: "", acceptedValues: "", isExpanded: true }
-    ])
+  const addItem = (question = "") => {
+    const newItem: InfoItem = {
+      id: Date.now().toString(),
+      question,
+      acceptedValues: "",
+      isExpanded: true,
+    }
+    setItems(prev => [...prev, newItem])
+    setShowEditingFields(true)
   }
 
   const removeItem = (id: string) => {
-    if (items.length > 1) {
-      setItems(prev => prev.filter(item => item.id !== id))
-    }
+    setItems(prev => {
+      const updated = prev.filter(item => item.id !== id)
+      // If no items remain, go back to suggestion buttons
+      if (updated.length === 0) {
+        setShowEditingFields(false)
+      }
+      return updated
+    })
   }
 
   const updateItem = (id: string, field: "question" | "acceptedValues", value: string) => {
@@ -71,18 +83,12 @@ export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureI
     ))
   }
 
-  const addSuggestion = (suggestion: string) => {
-    // Find the first empty item or add a new one
-    const emptyItem = items.find(item => !item.question.trim())
-    if (emptyItem) {
-      updateItem(emptyItem.id, "question", suggestion)
-    } else {
-      setItems(prev => [
-        ...prev,
-        { id: Date.now().toString(), question: suggestion, acceptedValues: "", isExpanded: true }
-      ])
-    }
-    setShowSuggestions(false)
+  const handleSuggestionClick = (suggestion: string) => {
+    addItem(suggestion)
+  }
+
+  const handleOtherClick = () => {
+    addItem("")
   }
 
   const handleSubmit = () => {
@@ -104,35 +110,59 @@ export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureI
 
   const hasValidItems = items.some(item => item.question.trim())
 
+  // Get suggestions that haven't been added yet
+  const availableSuggestions = SUGGESTED_QUESTIONS.filter(
+    suggestion => !items.some(item => item.question === suggestion)
+  )
+
+  // ========================================
+  // Phase 1: Show suggestion buttons
+  // ========================================
+  if (!showEditingFields) {
+    return (
+      <div className={cn("space-y-4 px-4", className)}>
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_QUESTIONS.map((suggestion) => (
+            <button
+              key={suggestion}
+              type="button"
+              onClick={() => handleSuggestionClick(suggestion)}
+              className="px-4 py-2 text-sm rounded-full border-2 border-[#0051fe]/20 bg-white/60 text-[#04152b] hover:border-[#0051fe]/50 hover:bg-[#0051fe]/5 transition-all"
+            >
+              {suggestion}
+            </button>
+          ))}
+
+          {/* "Outro" button */}
+          <button
+            type="button"
+            onClick={handleOtherClick}
+            className="px-4 py-2 text-sm rounded-full border-2 border-dashed border-[#0051fe]/30 bg-white/40 text-[#0051fe] hover:border-[#0051fe]/60 hover:bg-[#0051fe]/5 transition-all flex items-center gap-1.5"
+          >
+            <Pencil className="size-3.5" />
+            Outro (personalizar)
+          </button>
+        </div>
+
+        {/* Skip button */}
+        <div className="flex justify-center">
+          <Button
+            onClick={() => onSubmit("Nenhuma informação adicional")}
+            variant="outline"
+            className="rounded-full border-[#0051fe]/30 text-[#04152b] hover:bg-[#0051fe]/5 px-6"
+          >
+            Pular
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // ========================================
+  // Phase 2: Show editing fields
+  // ========================================
   return (
     <div className={cn("space-y-4 px-4", className)}>
-      {/* Suggestions */}
-      <div className="space-y-2">
-        <button
-          type="button"
-          onClick={() => setShowSuggestions(!showSuggestions)}
-          className="text-sm text-[#0051fe] flex items-center gap-1 hover:underline"
-        >
-          💡 Ver sugestões de perguntas
-          {showSuggestions ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
-        </button>
-        
-        {showSuggestions && (
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTED_QUESTIONS.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                onClick={() => addSuggestion(suggestion)}
-                className="px-3 py-1 text-xs rounded-full bg-[#0051fe]/10 text-[#0051fe] hover:bg-[#0051fe]/20 transition-colors"
-              >
-                + {suggestion}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Items */}
       <div className="space-y-3">
         {items.map((item, index) => (
@@ -149,6 +179,7 @@ export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureI
                 onChange={(e) => updateItem(item.id, "question", e.target.value)}
                 placeholder="Ex: Qual seu plano de saúde?"
                 className="flex-1 bg-transparent text-[#04152b] placeholder:text-[#04152b]/50 outline-none text-sm"
+                autoFocus={!item.question}
               />
               <button
                 type="button"
@@ -161,15 +192,13 @@ export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureI
                   <ChevronDown className="size-4 text-[#04152b]/50" />
                 )}
               </button>
-              {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeItem(item.id)}
-                  className="p-1 hover:bg-red-100 rounded-full transition-colors"
-                >
-                  <X className="size-4 text-red-500" />
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => removeItem(item.id)}
+                className="p-1 hover:bg-red-100 rounded-full transition-colors"
+              >
+                <X className="size-4 text-red-500" />
+              </button>
             </div>
 
             {/* Expanded content */}
@@ -191,14 +220,33 @@ export function CaptureInfoInput({ onSubmit, defaultValue, className }: CaptureI
         ))}
       </div>
 
-      {/* Add button */}
+      {/* Add more suggestions or custom */}
+      {availableSuggestions.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-[#04152b]/50">Adicionar mais perguntas:</p>
+          <div className="flex flex-wrap gap-2">
+            {availableSuggestions.map((suggestion) => (
+              <button
+                key={suggestion}
+                type="button"
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="px-3 py-1 text-xs rounded-full bg-[#0051fe]/10 text-[#0051fe] hover:bg-[#0051fe]/20 transition-colors"
+              >
+                + {suggestion}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add custom button */}
       <button
         type="button"
-        onClick={addItem}
+        onClick={handleOtherClick}
         className="flex items-center gap-1 text-sm text-[#0051fe] hover:text-[#0051fe]/80 transition-colors"
       >
         <Plus className="size-4" />
-        Adicionar outra pergunta
+        Adicionar pergunta personalizada
       </button>
 
       {/* Submit */}
