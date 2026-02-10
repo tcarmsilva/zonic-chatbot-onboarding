@@ -8,7 +8,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "
 const ALLOWED_ORIGINS = [
   "http://localhost:3000",
   "https://zonic.com.br",
-  "https://zonic-onboarding.netlify.app/",
+  "https://zonic-onboarding.netlify.app",
   "https://welcome.zonic.com.br",
 ];
 
