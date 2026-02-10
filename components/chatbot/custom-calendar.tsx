@@ -54,17 +54,17 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds }: 
       const startDate = today.toISOString().split("T")[0]
 
       const endDateObj = new Date(today)
-      endDateObj.setDate(today.getDate() + 14)
+      endDateObj.setDate(today.getDate() + 29)
       const endDate = endDateObj.toISOString().split("T")[0]
 
       let response
 
       // Se calendarIds for fornecido, agrega slots de múltiplos calendários
       if (calendarIds && calendarIds.length > 0) {
-        console.log("[v0] Fetching aggregated slots for 15 days:", startDate, "to", endDate, "calendars:", calendarIds)
+        console.log("[v0] Fetching aggregated slots for 30 days:", startDate, "to", endDate, "calendars:", calendarIds)
         response = await getAggregatedSlots(startDate, endDate, calendarIds)
       } else {
-        console.log("[v0] Fetching slots for 15 days:", startDate, "to", endDate, "calendar:", calendarId)
+        console.log("[v0] Fetching slots for 30 days:", startDate, "to", endDate, "calendar:", calendarId)
         response = await getAvailableSlots(startDate, endDate, calendarId)
       }
 
@@ -76,7 +76,7 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds }: 
 
       const allDays: DayAvailability[] = []
 
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 30; i++) {
         const date = new Date(today)
         date.setDate(today.getDate() + i)
         const dateStr = date.toISOString().split("T")[0]
@@ -181,7 +181,7 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds }: 
   if (days.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-[#04152b]/80 mb-4">Não há horários disponíveis nos próximos 15 dias.</p>
+        <p className="text-[#04152b]/80 mb-4">Não há horários disponíveis nos próximos 30 dias.</p>
         <Button onClick={loadAvailability} variant="outline" size="sm" className="border-[#0051fe] text-[#0051fe] hover:bg-[#0051fe]/10">
           Tentar novamente
         </Button>
