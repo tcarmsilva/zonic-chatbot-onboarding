@@ -25,6 +25,7 @@ export type StepInputType =
   | "project_responsible_details"
   | "instagram"
   | "hot_lead"
+  | "objections"
   | "doctors_list"
   | "followup_stages"
 

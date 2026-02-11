@@ -705,6 +705,19 @@ export const chatConfig: ChatbotConfig = {
       trackingEvent: "hot_lead",
     },
     {
+      id: "objections",
+      type: "objections",
+      botMessage: (
+        <div className="space-y-2">
+          <p>Agora vamos preparar a IA para lidar com objeções dos clientes! 🛡️</p>
+          <p>Quais são as <strong>objeções mais comuns</strong> que seus clientes fazem e como você gostaria que a IA respondesse a cada uma?</p>
+          <p className="text-sm text-[#04152b]/70">Selecione objeções sugeridas ou adicione as suas. Para cada uma, escreva a resposta ideal que a IA deve usar.</p>
+        </div>
+      ),
+      dataKey: "objections",
+      trackingEvent: "objections",
+    },
+    {
       id: "needs_review",
       type: "textarea",
       botMessage: "Em que casos você quer que a IA se desligue automaticamente e coloque a conversa para revisão humana?",

@@ -359,6 +359,7 @@ const CUSTOM_INSTRUCTIONS_FIELDS = new Set([
   "is_ai_allowed_to_send_product_pictures",
   // Lead qualification
   "hot_lead",
+  "objections",
   // Onboarding / notificação
   "notification",
   "when_lost_lead",

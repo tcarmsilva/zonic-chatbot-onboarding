@@ -27,6 +27,7 @@ import { InstagramInput } from "./instagram-input"
 import { CnpjInput } from "./cnpj-input"
 import { RatingInput } from "./rating-input"
 import { HotLeadInput } from "./hot-lead-input"
+import { ObjectionsInput } from "./objections-input"
 import { MultiSelectWithCustom } from "./multi-select-with-custom"
 import { ProductsInput } from "./products-input"
 import { DoctorsListInput } from "./doctors-list-input"
@@ -88,6 +89,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
   const [showCnpj, setShowCnpj] = useState(false)
   const [showRating, setShowRating] = useState(false)
   const [showHotLead, setShowHotLead] = useState(false)
+  const [showObjections, setShowObjections] = useState(false)
   const [showMultiSelectWithCustom, setShowMultiSelectWithCustom] = useState(false)
   const [showProductsInput, setShowProductsInput] = useState(false)
   const [showDoctorsList, setShowDoctorsList] = useState(false)
@@ -236,7 +238,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
       return
     }
     scrollToBottom()
-  }, [messagesLength, messagesLastId, isTyping, showInput, showChoices, showMultiSelect, showTimezone, showOperatingHours, showDeactivationSchedule, showNumber, showTextarea, showMultiText, showConversationFlow, showConversationStyle, showCaptureInfo, showTeamMembers, showSingleRoleChoice, showProjectResponsibleDetails, showInstagram, showCnpj, showRating, showHotLead, showMultiSelectWithCustom, showProductsInput, showFollowupStages, showDoctorsList, showCalendar])
+  }, [messagesLength, messagesLastId, isTyping, showInput, showChoices, showMultiSelect, showTimezone, showOperatingHours, showDeactivationSchedule, showNumber, showTextarea, showMultiText, showConversationFlow, showConversationStyle, showCaptureInfo, showTeamMembers, showSingleRoleChoice, showProjectResponsibleDetails, showInstagram, showCnpj, showRating, showHotLead, showObjections, showMultiSelectWithCustom, showProductsInput, showFollowupStages, showDoctorsList, showCalendar])
 
   const addBotMessage = (content: string | React.ReactNode, showAvatar = true) => {
     setMessages((prev) => [
@@ -289,6 +291,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
     setShowCnpj(false)
     setShowRating(false)
     setShowHotLead(false)
+    setShowObjections(false)
     setShowMultiSelectWithCustom(false)
     setShowProductsInput(false)
     setShowDoctorsList(false)
@@ -417,6 +420,9 @@ export function ChatContainer({ config }: ChatContainerProps) {
         break
       case "hot_lead":
         setShowHotLead(true)
+        break
+      case "objections":
+        setShowObjections(true)
         break
       case "multi_select_with_custom":
         setShowMultiSelectWithCustom(true)
@@ -1120,6 +1126,13 @@ export function ChatContainer({ config }: ChatContainerProps) {
             </div>
           )}
 
+          {/* Objections Input (dynamic objection + answer pairs) */}
+          {showObjections && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
+              <ObjectionsInput onSubmit={handleSubmit} defaultValue={currentStep?.dataKey ? userData[currentStep.dataKey] : undefined} />
+            </div>
+          )}
+
           {/* Multi Select With Custom */}
           {showMultiSelectWithCustom && currentStep?.options && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
@@ -1168,7 +1181,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
             showMultiSelect || showTimezone || showOperatingHours || showDeactivationSchedule ||
             showNumber || showTextarea || showMultiText || showConversationFlow ||
             showConversationStyle || showCaptureInfo || showTeamMembers || showInstagram ||
-            showRating || showHotLead || showMultiSelectWithCustom || showProductsInput || showFollowupStages ||
+            showRating || showHotLead || showObjections || showMultiSelectWithCustom || showProductsInput || showFollowupStages ||
             showDoctorsList
           ) && (
             <div className="flex justify-center pt-2 pb-2">
