@@ -94,6 +94,8 @@ export interface ChatbotConfig {
     preScheduleMessage: string | React.ReactNode
     // ID do calendário a usar (default: "1")
     calendarId?: string
+    // URL do Cal.com para embed como fallback quando a API não retorna horários
+    fallbackUrl?: string
     // Mensagem final após agendamento
     completionMessage: {
       title: string

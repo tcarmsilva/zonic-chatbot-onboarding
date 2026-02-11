@@ -14,10 +14,11 @@ interface CalendarSchedulerProps {
   }
   onboardingId?: number | null
   calendarIds?: CalendarId[] // Lista de calendários para agregar slots
+  fallbackUrl?: string // URL do Cal.com para embed como fallback
   onBookingComplete?: (bookingInfo: { date: string; time: string; shortFormat: string }, isClinic: boolean) => void
 }
 
-export function CalendarScheduler({ userData, onboardingId, calendarIds = ["1"], onBookingComplete }: CalendarSchedulerProps) {
+export function CalendarScheduler({ userData, onboardingId, calendarIds = ["1"], fallbackUrl, onBookingComplete }: CalendarSchedulerProps) {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null)
 
   // Usar o primeiro calendário como padrão para booking
@@ -41,5 +42,5 @@ export function CalendarScheduler({ userData, onboardingId, calendarIds = ["1"],
     )
   }
 
-  return <CustomCalendar onSlotSelect={setSelectedSlot} calendarId={primaryCalendarId} calendarIds={calendarIds} />
+  return <CustomCalendar onSlotSelect={setSelectedSlot} calendarId={primaryCalendarId} calendarIds={calendarIds} fallbackUrl={fallbackUrl} />
 }

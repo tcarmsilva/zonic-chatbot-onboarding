@@ -24,9 +24,10 @@ interface CustomCalendarProps {
   onSlotSelect: (slot: string) => void
   calendarId?: CalendarId
   calendarIds?: CalendarId[] // Se fornecido, agrega slots de múltiplos calendários
+  fallbackUrl?: string // URL do Cal.com para embed quando API não retorna horários
 }
 
-export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds }: CustomCalendarProps) {
+export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fallbackUrl }: CustomCalendarProps) {
   const [days, setDays] = useState<DayAvailability[]>([])
   const [selectedDay, setSelectedDay] = useState<number>(0)
   const [loading, setLoading] = useState(true)
@@ -167,21 +168,27 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds }: 
     )
   }
 
-  if (error) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-[#04152b] mb-4">{error}</p>
-        <Button onClick={loadAvailability} variant="outline" size="sm" className="border-[#0051fe] text-[#0051fe] hover:bg-[#0051fe]/10">
-          Tentar novamente
-        </Button>
-      </div>
-    )
-  }
+  if (error || days.length === 0) {
+    // Fallback: embed Cal.com calendar when API returns no slots or errors
+    if (fallbackUrl) {
+      return (
+        <div className="w-full">
+          <iframe
+            src={fallbackUrl}
+            className="w-full border-0 rounded-lg"
+            style={{ height: "680px", minHeight: "680px" }}
+            loading="lazy"
+            allow="camera; microphone; payment"
+          />
+        </div>
+      )
+    }
 
-  if (days.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-[#04152b]/80 mb-4">Não há horários disponíveis nos próximos 30 dias.</p>
+        <p className="text-[#04152b] mb-4">
+          {error || "Não há horários disponíveis nos próximos 30 dias."}
+        </p>
         <Button onClick={loadAvailability} variant="outline" size="sm" className="border-[#0051fe] text-[#0051fe] hover:bg-[#0051fe]/10">
           Tentar novamente
         </Button>
