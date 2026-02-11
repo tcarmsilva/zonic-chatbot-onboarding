@@ -52,10 +52,19 @@ export async function GET(request: Request) {
     const data = await response.json()
     console.log("[v0] Cal.com API response:", JSON.stringify(data).slice(0, 500))
 
+    // Normalize slots: Cal.com v2 returns {time: "..."} objects, convert to plain strings
+    const rawSlots = data.data?.slots || {}
+    const normalizedSlots: { [date: string]: string[] } = {}
+    for (const [date, slots] of Object.entries(rawSlots)) {
+      normalizedSlots[date] = (slots as any[]).map((slot: any) =>
+        typeof slot === "string" ? slot : slot.time
+      )
+    }
+
     const transformedData = {
       status: data.status || "success",
       data: {
-        slots: data.data?.slots || {},
+        slots: normalizedSlots,
       },
     }
 
