@@ -6,7 +6,8 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "test:edge": "cd supabase/functions/onboarding_records_chatbot && DENO_ENV=test SUPABASE_URL=https://test.supabase.co SUPABASE_SERVICE_ROLE_KEY=test-key pnpm dlx deno test --allow-env --no-check"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

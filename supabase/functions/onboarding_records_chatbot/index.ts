@@ -1,4 +1,5 @@
 // index.ts - Supabase Edge Function for Chatbot Onboarding Records
+/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.28.0";
 
@@ -249,6 +250,49 @@ function parseDeactivationSchedule(value: string | unknown): Record<string, { st
   return null;
 }
 
+// Convert deactivation schedule (day -> { start_h, end_h }) to availability_blocks format:
+// [{ rrule: "FREQ=WEEKLY;BYDAY=MO,TU,...", start_time: "09:00", end_time: "18:00" }]
+function deactivationScheduleToAvailabilityBlocks(
+  schedule: Record<string, { start_h: number; end_h: number }>
+): { rrule: string; start_time: string; end_time: string }[] {
+  const blocks: { rrule: string; start_time: string; end_time: string }[] = [];
+  const enabledSlots: { day: string; start_time: string; end_time: string }[] = [];
+
+  for (const dayKey of DAY_ORDER) {
+    const day = schedule[dayKey];
+    if (day && typeof day.start_h === "number" && typeof day.end_h === "number") {
+      const start_time = `${String(day.start_h).padStart(2, "0")}:00`;
+      const end_time = `${String(day.end_h).padStart(2, "0")}:00`;
+      enabledSlots.push({ day: dayKey, start_time, end_time });
+    }
+  }
+
+  let i = 0;
+  while (i < enabledSlots.length) {
+    const slot = enabledSlots[i];
+    const days: string[] = [DAY_TO_RRULE[slot.day]];
+    let j = i + 1;
+    const dayIndex = (d: string) => DAY_ORDER.indexOf(d);
+    while (
+      j < enabledSlots.length &&
+      enabledSlots[j].start_time === slot.start_time &&
+      enabledSlots[j].end_time === slot.end_time &&
+      dayIndex(enabledSlots[j].day) === dayIndex(enabledSlots[j - 1].day) + 1
+    ) {
+      days.push(DAY_TO_RRULE[enabledSlots[j].day]);
+      j++;
+    }
+    blocks.push({
+      rrule: `FREQ=WEEKLY;BYDAY=${days.join(",")}`,
+      start_time: slot.start_time,
+      end_time: slot.end_time,
+    });
+    i = j;
+  }
+
+  return blocks;
+}
+
 // ============================================
 // TIMEZONE: label (frontend) -> IANA (companies pattern)
 // ============================================
@@ -265,6 +309,43 @@ function timezoneLabelToIana(value: string | null | undefined): string | null {
   if (!value || typeof value !== "string") return null;
   const trimmed = value.trim();
   return TIMEZONE_LABEL_TO_IANA[trimmed] ?? trimmed;
+}
+
+// bot_reply_to: label (frontend) -> internal value (companies pattern)
+const BOT_REPLY_TO_LABEL_TO_VALUE: Record<string, string> = {
+  "Todos os leads": "all",
+  "Apenas leads de tráfego pago": "paid_traffic_only",
+};
+
+function botReplyToLabelToValue(value: string | null | undefined): string | null {
+  if (!value || typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return BOT_REPLY_TO_LABEL_TO_VALUE[trimmed] ?? trimmed;
+}
+
+// crm_provider: label (frontend) -> valor normalizado para salvar
+// Nomes em minúsculo; Google Calendar -> multi_cal.com
+const CRM_PROVIDER_NORMALIZE: Record<string, string> = {
+  "Clinicorp": "clinicorp",
+  "Infosoft": "infosoft",
+  "Amigo": "amigo",
+  "Sistema Amigo": "amigo",
+  "Google": "multi_cal.com",
+  "Google Calendar": "multi_cal.com",
+  "Calendário da Zonic": "zonic",
+  "Belle": "belle",
+  "Trinks": "trinks",
+  "Clínica Ágil": "clinica_agil",
+  "Prontuário Verde": "green_calendar",
+  "Clinic Web": "clinic_web",
+  "iClinic": "iclinic",
+  "Outro sistema": "outro",
+};
+
+function normalizeCrmProvider(value: string | null | undefined): string | null {
+  if (!value || typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return CRM_PROVIDER_NORMALIZE[trimmed] ?? trimmed.toLowerCase().replace(/\s+/g, "_");
 }
 
 // ============================================
@@ -481,10 +562,13 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       hasClinicInfoField = true;
     }
     
-    // deactivation_schedule: coluna deactivation_schedule (objeto json)
+    // deactivation_schedule: coluna deactivation_schedule (objeto json) + availability_blocks (companies pattern)
     if (key === "deactivation_schedule") {
       const parsed = parseDeactivationSchedule(value);
       payload.deactivation_schedule = parsed;
+      if (parsed !== null) {
+        payload.availability_blocks = deactivationScheduleToAvailabilityBlocks(parsed);
+      }
       continue;
     }
 
@@ -497,21 +581,29 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       continue;
     }
 
-    // Horários de funcionamento (pergunta: "Quais são os horários de funcionamento da sua clínica?")
-    // -> operating_hours (text), opening_hours (json), availability_blocks (formato array)
+    // Horários de funcionamento -> operating_hours (text), availability_blocks (json); tabela não tem opening_hours
     if (key === "operating_hours") {
+      const rawString = typeof value === "string" ? value : JSON.stringify(value);
       const parsed = typeof value === "string" ? parseJsonSafe(value) : value;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        const hoursObj = parsed as Record<string, { enabled?: boolean; start?: string; end?: string }>;
+        const hoursObj: Record<string, { enabled?: boolean; start?: string; end?: string }> = {};
+        for (const dayKey of DAY_ORDER) {
+          const raw = (parsed as Record<string, unknown>)[dayKey] ?? (parsed as Record<string, unknown>)[dayKey.charAt(0).toUpperCase() + dayKey.slice(1)];
+          if (raw && typeof raw === "object" && raw !== null) {
+            const o = raw as { enabled?: boolean; start?: string; end?: string };
+            hoursObj[dayKey] = { enabled: o.enabled, start: o.start, end: o.end };
+          }
+        }
         const hasDayKeys = DAY_ORDER.some((d) => d in hoursObj);
         if (hasDayKeys) {
-          // availability_blocks: sempre JSON no formato [{ rrule, start_time, end_time }, ...]
           const blocks = operatingHoursToAvailabilityBlocks(hoursObj);
           payload.availability_blocks = blocks;
-          // operating_hours é coluna text: sempre enviar texto (JSON string)
           payload.operating_hours = JSON.stringify(hoursObj);
-          payload.opening_hours = hoursObj;
+        } else {
+          payload.operating_hours = rawString;
         }
+      } else {
+        payload.operating_hours = rawString;
       }
       continue;
     }
@@ -576,6 +668,14 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       if (key === "clinic_timezone" && columnName === "timezone") {
         processedValue = timezoneLabelToIana(String(value));
       }
+      // bot_reply_to: store internal value (companies pattern), front sends label e.g. "Todos os leads"
+      else if (key === "bot_reply_to" && columnName === "bot_reply_to") {
+        processedValue = botReplyToLabelToValue(String(value));
+      }
+      // crm_provider: salvar normalizado (minúsculo/underscore; Google Calendar -> multi_cal.com)
+      else if (key === "crm_provider" && columnName === "crm_provider") {
+        processedValue = normalizeCrmProvider(String(value));
+      }
       // Convert booleans (coluna própria; não salvar _raw em custom_instructions)
       else if (BOOLEAN_FIELDS.has(key)) {
         processedValue = stringToBoolean(String(value));
@@ -608,7 +708,7 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       continue;
     }
     
-    // Handle instagram_links (text[] array)
+    // Handle instagram_links (text[] array) — companies: one element per handle
     if (INSTAGRAM_FIELDS.has(key)) {
       const parsed = parseJsonSafe(value);
       if (Array.isArray(parsed)) {
@@ -617,13 +717,16 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
           if (typeof item === 'string') return item;
           return item.username ? `@${item.username}${item.type ? ` (${item.type})` : ''}` : null;
         }).filter(Boolean) as string[];
-        
         if (links.length > 0) {
           payload.instagram_links = links;
         }
       } else if (typeof parsed === 'string') {
-        // If it's a single string, wrap in array
-        payload.instagram_links = [parsed];
+        // Single string: split by newline so each line = one element (companies pattern)
+        const trimmed = parsed.trim();
+        if (trimmed) {
+          const links = trimmed.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
+          payload.instagram_links = links.length > 0 ? links : [trimmed];
+        }
       }
       continue;
     }
@@ -697,6 +800,11 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
   return payload;
 }
 
+// Export for tests: validar payload sem conectar ao banco (Deno test)
+export { buildPayload };
+
+// Em testes (DENO_ENV=test) não inicia o servidor para poder importar buildPayload
+if (Deno.env.get("DENO_ENV") !== "test") {
 serve(async (req: Request) => {
   console.log("=== Onboarding Records Edge Function Called ===");
   
@@ -802,3 +910,4 @@ serve(async (req: Request) => {
     });
   }
 });
+}

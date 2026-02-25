@@ -140,6 +140,26 @@ zonic-chat-onboard/
     └── functions/        # Edge functions
 ```
 
+## 🧪 Testes (sem banco de dados)
+
+Os dados que o chat envia são normalizados na Edge Function (timezone IANA, `bot_reply_to`, `crm_provider`, etc.). Para garantir que isso está correto **sem conectar ao banco**, use os testes da função:
+
+1. **Instale o Deno** (se ainda não tiver): [deno.land](https://deno.land/)
+2. Na pasta da Edge Function, rode:
+
+```bash
+cd supabase/functions/onboarding_records_chatbot
+deno test --allow-env
+```
+
+Ou, a partir da raiz do projeto (com Deno no PATH):
+
+```bash
+pnpm exec -- deno test --allow-env supabase/functions/onboarding_records_chatbot/
+```
+
+Os testes chamam só a função `buildPayload` (que monta o objeto que seria enviado ao banco). Nenhum `insert`/`update` é executado, então **não é necessário Supabase nem variáveis de banco** no ambiente de testes.
+
 ## 🔐 Segurança
 
 - Nunca commite arquivos `.env` ou `.env.local`

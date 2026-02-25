@@ -179,8 +179,13 @@ export async function createBooking(
   })
 
   if (!response.ok) {
-    const error = await response.json()
-    console.error("[v0] Booking API error:", error)
+    let error: { error?: string } = {}
+    try {
+      error = await response.json()
+    } catch {
+      // Resposta não é JSON
+    }
+    console.error("[v0] Booking API error:", response.status, error)
     throw new Error(error.error || `Booking error: ${response.status}`)
   }
 

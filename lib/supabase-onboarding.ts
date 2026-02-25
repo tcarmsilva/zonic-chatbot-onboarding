@@ -103,13 +103,20 @@ export async function updateOnboardingRecord(
       }),
     });
 
-    const result: OnboardingResponse = await response.json();
+    let result: OnboardingResponse = { ok: false };
+    try {
+      result = await response.json();
+    } catch {
+      // Resposta não é JSON (ex.: 502, timeout)
+      console.error('[OnboardingAPI] Failed to update record:', response.status, response.statusText);
+      return { success: false, error: `Erro ${response.status}: ${response.statusText}` };
+    }
 
     if (!response.ok || !result.ok) {
-      console.error('[OnboardingAPI] Failed to update record:', result);
+      console.error('[OnboardingAPI] Failed to update record:', response.status, result);
       return { 
         success: false, 
-        error: result.details || result.error || 'Failed to update record' 
+        error: result.details || result.error || `Failed to update record (${response.status})` 
       };
     }
 
