@@ -1,0 +1,295 @@
+================================================================================
+  PERGUNTAS DO ONBOARDING ZONIC — ENTREVISTA COM O CLIENTE
+  Use este documento para preencher as respostas durante a reunião.
+================================================================================
+
+Dica: Tenha em mãos — CNPJ da clínica, telefones, endereço e perfis do Instagram.
+
+--------------------------------------------------------------------------------
+SEÇÃO 0: RESPONSÁVEL PELO PROJETO DE IMPLANTAÇÃO
+--------------------------------------------------------------------------------
+
+1. Quem é o responsável pelo projeto de implantação da Zonic na clínica?
+   (Dono(a) da clínica / Gerente / Atendente / Agência)
+   Resposta: _____________________________________________________________
+
+2. Dados do responsável pelo projeto de implantação:
+   Nome: _____________________________________________________________
+   Telefone: _____________________________________________________________
+   E-mail: _____________________________________________________________
+
+3. Quem vai usar a plataforma da Zonic no dia a dia?
+   (Selecione todas as pessoas que vão acessar e preencha os dados de cada uma)
+   Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 1: INFORMAÇÕES BÁSICAS DA CLÍNICA
+--------------------------------------------------------------------------------
+
+4. Qual é o nome da sua clínica?
+   Resposta: _____________________________________________________________
+
+5. Qual é o CNPJ da sua clínica?
+   Resposta: _____________________________________________________________
+
+6. Qual é o tipo da sua clínica?
+   (Estética / Médica / Odonto / Outro)
+   Resposta: _____________________________________________________________
+
+   [Se "Outro"] Qual é o tipo da sua clínica? (especificar)
+   Resposta: _____________________________________________________________
+
+7. Qual é o WhatsApp da sua clínica? (número que a IA vai usar para atender os leads)
+   Resposta: _____________________________________________________________
+
+8. Em qual fuso horário a sua clínica trabalha?
+   (Brasília GMT-3 / Manaus GMT-4 / Cuiabá GMT-4 / Rio Branco GMT-5 / Fernando de Noronha GMT-2)
+   Resposta: _____________________________________________________________
+
+9. Qual é o endereço completo da sua clínica? (Rua, número, bairro, cidade - Estado)
+   Resposta: _____________________________________________________________
+
+10. Você tem o link do Google Maps da sua clínica? (Se não tiver, escreva "não tenho")
+    Resposta: _____________________________________________________________
+
+11. Qual é o site da sua clínica? (Se não tiver, escreva que não tem)
+    Resposta: _____________________________________________________________
+
+12. Quais são os perfis de Instagram da sua clínica?
+    (Para cada perfil: usuário sem @ e se é da clínica ou de um(a) doutor(a))
+    Resposta: _____________________________________________________________
+
+13. Quais são os horários de funcionamento da sua clínica? (dias e horários)
+    Resposta: _____________________________________________________________
+
+14. A sua clínica tem estacionamento para os pacientes?
+    (Sim gratuito / Sim pago / Sim conveniado / Não tem / Estacionamento na rua)
+    Resposta: _____________________________________________________________
+
+    [Se "Sim, pago" ou "Sim, conveniado"] Qual o valor do estacionamento?
+    Resposta: _____________________________________________________________
+
+15. Você quer que a chave PIX da clínica seja compartilhada com os pacientes?
+    (Sim, quero compartilhar / Não)
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Qual é a chave PIX da clínica? (CPF/CNPJ, e-mail ou chave aleatória)
+    Resposta: _____________________________________________________________
+
+16. Quais meios de pagamento a sua clínica aceita?
+    (PIX / Cartão de crédito / Cartão de débito / Boleto / Dinheiro físico — pode marcar vários)
+    Resposta: _____________________________________________________________
+
+17. Tem alguma especificidade sobre os pagamentos?
+    (ex: só aceita crédito acima de R$ 500 ou 5% de desconto no PIX)
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Descreva as especificidades sobre os pagamentos.
+    Resposta: _____________________________________________________________
+
+18. Quais são as especialidades da sua clínica?
+    (ex: Dermatologia, Harmonização facial, Odontologia estética)
+    Resposta: _____________________________________________________________
+
+19. A sua clínica aceita plano de saúde?
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Quais planos de saúde são aceitos?
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Há algum plano que só é aceito para determinados tipos de consulta ou procedimento?
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 2: CONFIGURAÇÃO DA IA
+--------------------------------------------------------------------------------
+
+20. Qual nome você gostaria que a assistente de IA tivesse? (ex: Clara, Ana, Sofia)
+    Resposta: _____________________________________________________________
+
+21. Como você quer que a assistente se apresente aos pacientes?
+    (Assistente virtual/IA / Atendente da clínica / Doutor(a) da clínica)
+    Resposta: _____________________________________________________________
+
+22. Qual mensagem de saudação inicial você quer que a IA envie?
+    Resposta: _____________________________________________________________
+
+23. A IA deve responder mensagens de todos os leads ou apenas dos que vierem de tráfego pago (anúncios)?
+    (Todos os leads / Apenas leads de tráfego pago)
+    Resposta: _____________________________________________________________
+
+24. A IA deve responder mensagens em grupos de WhatsApp?
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+25. Se o lead enviar uma mensagem de voz, você quer que a IA responda também com mensagem de voz gerada por IA?
+    (Sim, responder com voz / Não, responder com texto)
+    Resposta: _____________________________________________________________
+
+26. Qual tipo de comunicação você quer que a sua IA tenha?
+    (Ver exemplos de cada estilo no chatbot)
+    Resposta: _____________________________________________________________
+
+27. Qual forma de conversa você prefere para a sua IA?
+    (Escolher o fluxo que melhor se adapta ao atendimento)
+    Resposta: _____________________________________________________________
+
+28. Personalize o fluxo de conversa da sua IA (editar o roteiro padrão do fluxo escolhido).
+    Resposta: _____________________________________________________________
+
+29. Quais informações você quer que a IA pergunte aos leads ANTES de agendar?
+    (Selecionar perguntas ou criar as suas)
+    Resposta: _____________________________________________________________
+
+30. Quais as principais dores que os pacientes vão resolver na sua clínica?
+    (ex: Agendar consulta, Rugas, Harmonização facial, etc. — até 10 opções)
+    Resposta: _____________________________________________________________
+
+31. Quais produtos e serviços a sua clínica oferece?
+    (Até 5 da lista e/ou até 5 personalizados)
+    Resposta: _____________________________________________________________
+
+32. Você quer que a IA envie valores de consultas ou tratamentos quando o paciente perguntar?
+    (Sim só consulta / Sim só tratamento / Sim consultas e tratamentos / Nunca enviar valores)
+    Resposta: _____________________________________________________________
+
+33. Quer que a IA envie fotos de procedimentos quando falar de um tratamento? (ex: antes e depois)
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 3: CALENDÁRIO E AGENDAMENTOS
+--------------------------------------------------------------------------------
+
+34. Qual calendário/sistema você quer usar para gerenciar as agendas?
+    (Calendário Zonic / Infosoft / Clinicorp / Belle / Google Calendar / Trinks / Clínica Ágil / Prontuário Verde / Clinic Web / Sistema Amigo / iClinic / Outro)
+    Resposta: _____________________________________________________________
+
+    [Se "Outro sistema"] Qual é o nome do seu sistema de agendamento?
+    Resposta: _____________________________________________________________
+
+35. Você e sua equipe sabem o que é um CRM e como usá-lo?
+    (Sim, já usamos / Não sabemos o que é / Sabemos, mas precisamos de treinamento)
+    Resposta: _____________________________________________________________
+
+36. A IA pode agendar automaticamente ou você prefere enviar para revisão humana?
+    (Apenas consultas / Apenas tratamentos / Consultas e tratamentos / Nenhum, enviar para revisão humana)
+    Resposta: _____________________________________________________________
+
+37. Caso a IA não consiga realizar o agendamento (falta de horários ou problema de integração), você quer que a conversa seja marcada para revisão humana?
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+38. Você quer que a Zonic envie lembretes automáticos de consulta para os pacientes?
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Qual mensagem você quer que seja enviada NO DIA da consulta?
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Qual mensagem você quer que seja enviada 1 DIA ANTES da consulta?
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 4: COMPORTAMENTO DA IA
+--------------------------------------------------------------------------------
+
+39. Caso um humano responda uma mensagem no WhatsApp, a IA deve se desligar automaticamente?
+    (Sim, desligar automaticamente / Não, manter ativa)
+    Resposta: _____________________________________________________________
+
+    [Se Sim] Após a IA se auto-desligar, em quanto tempo ela deve ser religada automaticamente?
+    (1h / 2h / 4h / 8h / 12h / 24h / Nunca religar automaticamente)
+    Resposta: _____________________________________________________________
+
+40. A IA deve ficar ligada o tempo todo, ou desligada em horários específicos?
+    (ex: desligada no horário comercial quando a equipe está atendendo)
+    Resposta: _____________________________________________________________
+
+41. Você quer que a IA faça follow-ups inteligentes? (mensagens de acompanhamento para leads que não responderam)
+    (Sim, ativar follow-ups / Não)
+    Resposta: _____________________________________________________________
+
+42. Em quais etapas do funil de vendas a IA deve fazer follow-up (resgatar e reengajar leads)?
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 5: ESTRUTURA DA CLÍNICA
+--------------------------------------------------------------------------------
+
+43. Liste os doutores/profissionais que atendem na sua clínica e suas especialidades.
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 6: QUALIFICAÇÃO DE LEADS
+--------------------------------------------------------------------------------
+
+44. O que você considera como lead MUITO QUENTE, QUENTE e MORNO?
+    (Recomenda-se usar procedimentos/tratamentos de maior relevância/ticket para cada classificação)
+    Resposta: _____________________________________________________________
+
+45. Quais são as objeções mais comuns que seus clientes fazem e como você gostaria que a IA respondesse a cada uma?
+    Resposta: _____________________________________________________________
+
+46. Em que casos você quer que a IA se desligue automaticamente e coloque a conversa para revisão humana?
+    (ex: quando o paciente reclama, pede reembolso, menciona processo...)
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 7: NOTIFICAÇÕES E TAREFAS
+--------------------------------------------------------------------------------
+
+47. Em quais casos você quer receber notificações?
+    (Agendamento realizado / Conversa precisa de revisão / Novo lead — pode marcar vários)
+    Resposta: _____________________________________________________________
+
+48. Em qual número você deseja receber essas notificações sobre agendamentos e alertas importantes?
+    Resposta: _____________________________________________________________
+
+49. Em quais casos você quer que a IA gere tarefas para as atendentes realizarem?
+    (ex: Ligar para confirmar consulta, enviar orçamento por email...)
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+SEÇÃO 8: INTEGRAÇÕES E IMPORTAÇÕES
+--------------------------------------------------------------------------------
+
+50. Você quer importar uma lista de contatos de algum outro sistema para a Zonic?
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+51. Você quer importar uma lista de contatos para os quais a IA NÃO deve responder? (já deixar com IA desligada)
+    (Sim / Não)
+    Resposta: _____________________________________________________________
+
+52. Você quer integrar dados de anúncios na Zonic? Quais plataformas você usa?
+    (Não quero / Meta Facebook Instagram / Google Ads / TikTok Ads)
+    Resposta: _____________________________________________________________
+
+53. Em que situações você quer que o lead seja marcado como perdido?
+    (ex: quando desiste do tratamento, escolhe outra clínica, pede para parar de enviar mensagens...)
+    Resposta: _____________________________________________________________
+
+54. Você sabe quais métricas gostaria de ver sobre sua IA, atendimentos, leads, comercial?
+    (Para entendermos como melhorar o dashboard ou criar um personalizado)
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+FINALIZAÇÃO
+--------------------------------------------------------------------------------
+
+55. Você tem mais alguma informação relevante para compartilhar?
+    (Particularidades do atendimento, preferências, observações...)
+    Resposta: _____________________________________________________________
+
+56. Que nota você dá para este processo de onboarding? (1 a 5 estrelas)
+    Resposta: _____________________________________________________________
+
+57. [Se nota ≠ 5] Como podemos melhorar este processo?
+    Resposta: _____________________________________________________________
+
+--------------------------------------------------------------------------------
+FIM DO QUESTIONÁRIO
+--------------------------------------------------------------------------------

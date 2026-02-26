@@ -890,6 +890,8 @@ export const chatConfig: ChatbotConfig = {
       </div>
     ),
     calendarId: "1",
+    // URL do embed Cal.com usada quando a API não retorna horários (ex: https://app.cal.com/username/30min)
+    fallbackUrl: typeof process !== "undefined" ? process.env.NEXT_PUBLIC_CAL_EMBED_URL : undefined,
     completionMessage: {
       title: "Reunião agendada com sucesso!",
       message: (

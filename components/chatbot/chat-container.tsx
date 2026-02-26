@@ -218,6 +218,17 @@ export function ChatContainer({ config }: ChatContainerProps) {
     setTimeout(() => {
       setCurrentStepIndex(savedState.currentStepIndex)
       setIsResuming(false)
+      // Se o usuário tinha chegado na tela de agendamento (todos os passos respondidos, mas sem concluir o booking),
+      // exibir de novo o calendário para que os slots retornados pela API apareçam na UI.
+      const filteredSteps = getFilteredSteps(savedState.userData)
+      if (
+        config.calendar &&
+        !savedState.isComplete &&
+        savedState.currentStepIndex >= filteredSteps.length
+      ) {
+        addBotMessage(config.calendar.preScheduleMessage)
+        setShowCalendar(true)
+      }
     }, 500)
   }
 
@@ -491,6 +502,16 @@ export function ChatContainer({ config }: ChatContainerProps) {
     // For certain types we store JSON but show a readable summary in the chat
     let displayMessage: string = value
     
+    // Conversation flow: edge espera { id, name }; exibimos o nome no chat
+    if (step.id === "conversation_flow" && typeof value === "string" && value.trim().startsWith("{")) {
+      try {
+        const parsed = JSON.parse(value) as { id?: string; name?: string }
+        if (parsed.name) displayMessage = parsed.name
+      } catch {
+        // keep raw value if not valid JSON
+      }
+    }
+
     // Multi select with custom display
     if (step.type === "multi_select_with_custom") {
       try {
@@ -1203,6 +1224,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
                 userData={getCalendarUserData()} 
                 onboardingId={onboardingId}
                 calendarIds={[(config.calendar.calendarId || "1") as CalendarId]}
+                fallbackUrl={config.calendar.fallbackUrl}
                 onBookingComplete={(info) => handleBookingComplete(info)}
               />
             </div>

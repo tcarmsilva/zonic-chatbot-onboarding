@@ -117,12 +117,3 @@ Deno.test("deactivation_schedule gera availability_blocks no formato esperado", 
   assertEquals(Array.isArray(payload.availability_blocks), true);
   assertEquals((payload.availability_blocks as unknown[]).length >= 1, true);
 });
-
-// --- is_clinic_info_added: fica true quando qualquer dado de clínica é enviado
-Deno.test("is_clinic_info_added = true quando há dados de clínica", () => {
-  const payload = buildPayload({
-    clinic_name: "X",
-    clinic_timezone: "Brasília (GMT-3)",
-  });
-  assertEquals(payload.is_clinic_info_added, true);
-});

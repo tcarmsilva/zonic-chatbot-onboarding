@@ -1,18 +1,36 @@
 import { NextResponse } from "next/server"
 import { getCalendarConfig, validateCalendarConfig, type CalendarId } from "@/lib/cal-config"
 
+/** Normaliza telefone para E.164 (ex: +5511999999999). Cal.com rejeita formatos como (11) 99999-9999. */
+function normalizePhoneToE164(phone: string | undefined): string | null {
+  if (!phone || typeof phone !== "string") return null
+  const digits = phone.replace(/\D/g, "")
+  if (digits.length < 10) return null
+  // Brasil: 55 + DDD (2) + 8 ou 9 dígitos
+  let normalized = digits
+  if (digits.length === 10 || digits.length === 11) {
+    if (!digits.startsWith("55")) normalized = "55" + digits
+  } else if (digits.length >= 12 && digits.startsWith("55")) {
+    normalized = digits
+  } else {
+    return null
+  }
+  return normalized.length >= 12 && normalized.length <= 13 ? "+" + normalized : null
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { start, name, email, phone, notes, company, bookingId, calendarId, timeZone } = body
     const calId = (calendarId || "1") as CalendarId
+    const attendeePhoneE164 = normalizePhoneToE164(phone)
     // Usar a timezone do usuário se fornecida, caso contrário usar São Paulo como padrão
     const attendeeTimeZone = timeZone || "America/Sao_Paulo"
     console.log("[v0] Booking timezone info:", {
       attendeeTimeZone,
       start,
-      // Cal.com salvará convertendo para a timezone do calendário (SP)
-      // O vendedor verá em SP, o attendee verá na timezone dele
+      phoneOriginal: phone,
+      phoneE164: attendeePhoneE164 ?? "(omitido - inválido)",
     })
 
     const config = getCalendarConfig(calId)
@@ -74,11 +92,13 @@ export async function POST(request: Request) {
             name,
             email,
             timeZone: attendeeTimeZone,
-            phoneNumber: phone,
+            ...(attendeePhoneE164 && { phoneNumber: attendeePhoneE164 }),
             language: "pt",
           },
+          // Cal.com event type 4610188 exige o campo "Nomedaempresa"; enviamos também "company" se o tipo usar
           bookingFieldsResponses: {
             company: company || "Não informado",
+            Nomedaempresa: company || "Não informado",
           },
           metadata: {
             notes: notes || "",

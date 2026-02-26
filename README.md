@@ -140,25 +140,31 @@ zonic-chat-onboard/
     └── functions/        # Edge functions
 ```
 
-## 🧪 Testes (sem banco de dados)
+## 🧪 Testes
 
-Os dados que o chat envia são normalizados na Edge Function (timezone IANA, `bot_reply_to`, `crm_provider`, etc.). Para garantir que isso está correto **sem conectar ao banco**, use os testes da função:
+### Testes da Edge Function (sem banco)
 
-1. **Instale o Deno** (se ainda não tiver): [deno.land](https://deno.land/)
-2. Na pasta da Edge Function, rode:
-
-```bash
-cd supabase/functions/onboarding_records_chatbot
-deno test --allow-env
-```
-
-Ou, a partir da raiz do projeto (com Deno no PATH):
+Os dados que o chat envia são normalizados na Edge Function (timezone IANA, `bot_reply_to`, `crm_provider`, etc.). Para validar a lógica de normalização **sem conectar ao banco**:
 
 ```bash
-pnpm exec -- deno test --allow-env supabase/functions/onboarding_records_chatbot/
+pnpm test:edge
 ```
 
-Os testes chamam só a função `buildPayload` (que monta o objeto que seria enviado ao banco). Nenhum `insert`/`update` é executado, então **não é necessário Supabase nem variáveis de banco** no ambiente de testes.
+Os testes chamam só a função `buildPayload`. Nenhum insert/update é executado; não é necessário Supabase configurado.
+
+### Teste de integração (com banco real)
+
+Para um teste que **cria e atualiza um registro de verdade** na tabela `chatbot_onboarding` e valida que os valores normalizados foram salvos:
+
+1. Tenha `.env` ou `.env.local` com `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. A Edge Function deve estar deployada (`supabase functions deploy onboarding_records_chatbot`).
+3. Rode:
+
+```bash
+pnpm run test:integration
+```
+
+O script cria um registro, envia labels do front (ex.: "Todos os leads", "Clinicorp", "Brasília (GMT-3)") e verifica que o banco retorna os valores normalizados (`all`, `clinicorp`, `America/Sao_Paulo`).
 
 ## 🔐 Segurança
 

@@ -1,5 +1,4 @@
 // index.ts - Supabase Edge Function for Chatbot Onboarding Records
-/// <reference lib="deno.ns" />
 import { serve } from "https://deno.land/std@0.203.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.28.0";
 
@@ -62,16 +61,16 @@ function stringToBoolean(value: string | null | undefined): boolean | null {
   if (!value) return null;
   const lowerValue = value.toLowerCase().trim();
   // Check for positive patterns
-  if (lowerValue === 'sim' || 
-      lowerValue.startsWith('sim,') || 
+  if (lowerValue === 'sim' ||
+      lowerValue.startsWith('sim,') ||
       lowerValue.startsWith('sim ') ||
       lowerValue === 'sim, desligar automaticamente' ||
       lowerValue === 'sim, responder com voz' ||
       lowerValue === 'sim, ativar follow-ups' ||
       lowerValue === 'sim, quero compartilhar') return true;
   // Check for negative patterns
-  if (lowerValue === 'não' || 
-      lowerValue === 'nao' || 
+  if (lowerValue === 'não' ||
+      lowerValue === 'nao' ||
       lowerValue.startsWith('não,') ||
       lowerValue.startsWith('não ') ||
       lowerValue === 'não, manter ativa' ||
@@ -83,11 +82,11 @@ function stringToBoolean(value: string | null | undefined): boolean | null {
 function parseBookingPermission(value: string | null | undefined): { allowed: boolean; specificity: string | null } {
   if (!value) return { allowed: false, specificity: null };
   const lowerValue = value.toLowerCase().trim();
-  
+
   if (lowerValue.includes('nenhum') || lowerValue.includes('revisão humana')) {
     return { allowed: false, specificity: null };
   }
-  
+
   // AI is allowed to book
   if (lowerValue.includes('apenas consultas')) {
     return { allowed: true, specificity: 'apenas_consultas' };
@@ -98,7 +97,7 @@ function parseBookingPermission(value: string | null | undefined): { allowed: bo
   if (lowerValue.includes('consultas e tratamentos')) {
     return { allowed: true, specificity: 'consultas_e_tratamentos' };
   }
-  
+
   return { allowed: true, specificity: null };
 }
 
@@ -221,76 +220,33 @@ function operatingHoursToAvailabilityBlocks(
 // Parse deactivation schedule (retorna objeto day -> { start_h, end_h } para coluna deactivation_schedule)
 function parseDeactivationSchedule(value: string | unknown): Record<string, { start_h: number; end_h: number }> | null {
   const parsed = typeof value === 'string' ? parseJsonSafe(value) : value;
-  
+
   if (!parsed || typeof parsed !== 'object') return null;
-  
+
   const data = parsed as { mode?: string; schedule?: Record<string, { start_h: number; end_h: number }> };
-  
+
   // If mode is "always_on", return null (no deactivation schedule)
   if (data.mode === 'always_on') {
     return null;
   }
-  
+
   // If we have a schedule object, return it directly
   if (data.schedule && typeof data.schedule === 'object') {
     return data.schedule;
   }
-  
+
   // If the parsed value is already in the correct format (has day keys), return it
   const dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
   const hasValidDays = dayKeys.some(day => {
     const dayData = (parsed as Record<string, unknown>)[day];
     return dayData && typeof dayData === 'object' && 'start_h' in (dayData as object);
   });
-  
+
   if (hasValidDays) {
     return parsed as Record<string, { start_h: number; end_h: number }>;
   }
-  
+
   return null;
-}
-
-// Convert deactivation schedule (day -> { start_h, end_h }) to availability_blocks format:
-// [{ rrule: "FREQ=WEEKLY;BYDAY=MO,TU,...", start_time: "09:00", end_time: "18:00" }]
-function deactivationScheduleToAvailabilityBlocks(
-  schedule: Record<string, { start_h: number; end_h: number }>
-): { rrule: string; start_time: string; end_time: string }[] {
-  const blocks: { rrule: string; start_time: string; end_time: string }[] = [];
-  const enabledSlots: { day: string; start_time: string; end_time: string }[] = [];
-
-  for (const dayKey of DAY_ORDER) {
-    const day = schedule[dayKey];
-    if (day && typeof day.start_h === "number" && typeof day.end_h === "number") {
-      const start_time = `${String(day.start_h).padStart(2, "0")}:00`;
-      const end_time = `${String(day.end_h).padStart(2, "0")}:00`;
-      enabledSlots.push({ day: dayKey, start_time, end_time });
-    }
-  }
-
-  let i = 0;
-  while (i < enabledSlots.length) {
-    const slot = enabledSlots[i];
-    const days: string[] = [DAY_TO_RRULE[slot.day]];
-    let j = i + 1;
-    const dayIndex = (d: string) => DAY_ORDER.indexOf(d);
-    while (
-      j < enabledSlots.length &&
-      enabledSlots[j].start_time === slot.start_time &&
-      enabledSlots[j].end_time === slot.end_time &&
-      dayIndex(enabledSlots[j].day) === dayIndex(enabledSlots[j - 1].day) + 1
-    ) {
-      days.push(DAY_TO_RRULE[enabledSlots[j].day]);
-      j++;
-    }
-    blocks.push({
-      rrule: `FREQ=WEEKLY;BYDAY=${days.join(",")}`,
-      start_time: slot.start_time,
-      end_time: slot.end_time,
-    });
-    i = j;
-  }
-
-  return blocks;
 }
 
 // ============================================
@@ -311,43 +267,6 @@ function timezoneLabelToIana(value: string | null | undefined): string | null {
   return TIMEZONE_LABEL_TO_IANA[trimmed] ?? trimmed;
 }
 
-// bot_reply_to: label (frontend) -> internal value (companies pattern)
-const BOT_REPLY_TO_LABEL_TO_VALUE: Record<string, string> = {
-  "Todos os leads": "all",
-  "Apenas leads de tráfego pago": "paid_traffic_only",
-};
-
-function botReplyToLabelToValue(value: string | null | undefined): string | null {
-  if (!value || typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return BOT_REPLY_TO_LABEL_TO_VALUE[trimmed] ?? trimmed;
-}
-
-// crm_provider: label (frontend) -> valor normalizado para salvar
-// Nomes em minúsculo; Google Calendar -> multi_cal.com
-const CRM_PROVIDER_NORMALIZE: Record<string, string> = {
-  "Clinicorp": "clinicorp",
-  "Infosoft": "infosoft",
-  "Amigo": "amigo",
-  "Sistema Amigo": "amigo",
-  "Google": "multi_cal.com",
-  "Google Calendar": "multi_cal.com",
-  "Calendário da Zonic": "zonic",
-  "Belle": "belle",
-  "Trinks": "trinks",
-  "Clínica Ágil": "clinica_agil",
-  "Prontuário Verde": "green_calendar",
-  "Clinic Web": "clinic_web",
-  "iClinic": "iclinic",
-  "Outro sistema": "outro",
-};
-
-function normalizeCrmProvider(value: string | null | undefined): string | null {
-  if (!value || typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return CRM_PROVIDER_NORMALIZE[trimmed] ?? trimmed.toLowerCase().replace(/\s+/g, "_");
-}
-
 // ============================================
 // FIELD MAPPING: Data Keys to Database Columns
 // ============================================
@@ -360,40 +279,31 @@ const DIRECT_COLUMN_MAP: Record<string, string> = {
   "clinic_address": "address",
   "clinic_google_maps_link": "google_maps_link",
   "parking": "parking",
-  
+
   // AI Configuration
   "assistant_name": "assistant_name",
   "bot_reply_to": "bot_reply_to",
   "is_group_bot_activated": "is_group_bot_activated", // needs boolean conversion
   "is_voice_reply_activated": "is_voice_reply_activated", // needs boolean conversion
-  
+
   // Booking - is_ai_allow_to_book_appointments handled separately for specificity
   "is_booking_reminders_activated": "is_booking_reminders_activated", // needs boolean conversion
   "booking_reminder_today": "booking_reminder_today",
   "booking_reminder_tomorrow": "booking_reminder_tomorrow",
-  
+
   // AI Behavior
   "deactivate_on_human_reply": "deactivate_on_human_reply", // needs boolean conversion
   // deactivation_schedule tratado à parte: coluna deactivation_schedule + availability_blocks (formato array)
   "is_smart_followups_activated": "is_smart_followups_activated", // needs boolean conversion
   "ai_reactivation_interval": "ai_reactivation_interval", // needs integer conversion
   "reactivation_lead_status_ids": "reactivation_lead_status_ids", // needs array conversion
-  
+
   // CRM
   "crm_provider": "crm_provider",
   "conversation_style": "communication_style",
   // AI: conversation flow (Qual forma de conversa você prefere...) -> template_type
   "conversation_flow": "template_type",
 };
-
-// Fields that trigger is_clinic_info_added = true
-const CLINIC_INFO_FIELDS = new Set([
-  "clinic_name",
-  "clinic_address",
-  "clinic_whatsapp_phone",
-  "clinic_timezone",
-  "operating_hours",
-]);
 
 // Phone fields (need bigint conversion)
 const PHONE_FIELDS: Record<string, string> = {
@@ -508,38 +418,38 @@ const INSTAGRAM_FIELDS = new Set([
 // Build the database payload from incoming data
 function buildPayload(data: Record<string, unknown>, existingRecord?: Record<string, unknown>): Record<string, unknown> {
   const payload: Record<string, unknown> = {};
-  
+
   // Initialize JSON columns from existing record or empty objects
-  const customInstructions = existingRecord?.custom_instructions_inputs 
-    ? (typeof existingRecord.custom_instructions_inputs === 'string' 
-        ? JSON.parse(existingRecord.custom_instructions_inputs) 
+  const customInstructions = existingRecord?.custom_instructions_inputs
+    ? (typeof existingRecord.custom_instructions_inputs === 'string'
+        ? JSON.parse(existingRecord.custom_instructions_inputs)
         : existingRecord.custom_instructions_inputs)
     : {};
-  
+
   const calendarLogic = existingRecord?.calendar_logic_json
     ? (typeof existingRecord.calendar_logic_json === 'string'
         ? JSON.parse(existingRecord.calendar_logic_json)
         : existingRecord.calendar_logic_json)
     : {};
-  
+
   const clientData = existingRecord?.client_data
     ? (typeof existingRecord.client_data === 'string'
         ? JSON.parse(existingRecord.client_data)
         : existingRecord.client_data)
     : {};
-  
+
   const products = existingRecord?.products
     ? (typeof existingRecord.products === 'string'
         ? JSON.parse(existingRecord.products)
         : existingRecord.products)
     : {};
-  
+
   const painPoints = existingRecord?.pain_points
     ? (typeof existingRecord.pain_points === 'string'
         ? JSON.parse(existingRecord.pain_points)
         : existingRecord.pain_points)
     : {};
-  
+
   const onboardingData = existingRecord?.onboarding_data
     ? (typeof existingRecord.onboarding_data === 'string'
         ? JSON.parse(existingRecord.onboarding_data)
@@ -552,23 +462,14 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
   let hasProductsChanges = false;
   let hasPainPointsChanges = false;
   let hasOnboardingDataChanges = false;
-  let hasClinicInfoField = false;
 
   for (const [key, value] of Object.entries(data)) {
     if (value === undefined || value === null || value === '') continue;
-    
-    // Track if clinic info fields are being set
-    if (CLINIC_INFO_FIELDS.has(key)) {
-      hasClinicInfoField = true;
-    }
-    
-    // deactivation_schedule: coluna deactivation_schedule (objeto json) + availability_blocks (companies pattern)
+
+    // deactivation_schedule: coluna deactivation_schedule (objeto json)
     if (key === "deactivation_schedule") {
       const parsed = parseDeactivationSchedule(value);
       payload.deactivation_schedule = parsed;
-      if (parsed !== null) {
-        payload.availability_blocks = deactivationScheduleToAvailabilityBlocks(parsed);
-      }
       continue;
     }
 
@@ -581,33 +482,25 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       continue;
     }
 
-    // Horários de funcionamento -> operating_hours (text), availability_blocks (json); tabela não tem opening_hours
+    // Horários de funcionamento (pergunta: "Quais são os horários de funcionamento da sua clínica?")
+    // -> operating_hours (text), opening_hours (json), availability_blocks (formato array)
     if (key === "operating_hours") {
-      const rawString = typeof value === "string" ? value : JSON.stringify(value);
       const parsed = typeof value === "string" ? parseJsonSafe(value) : value;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-        const hoursObj: Record<string, { enabled?: boolean; start?: string; end?: string }> = {};
-        for (const dayKey of DAY_ORDER) {
-          const raw = (parsed as Record<string, unknown>)[dayKey] ?? (parsed as Record<string, unknown>)[dayKey.charAt(0).toUpperCase() + dayKey.slice(1)];
-          if (raw && typeof raw === "object" && raw !== null) {
-            const o = raw as { enabled?: boolean; start?: string; end?: string };
-            hoursObj[dayKey] = { enabled: o.enabled, start: o.start, end: o.end };
-          }
-        }
+        const hoursObj = parsed as Record<string, { enabled?: boolean; start?: string; end?: string }>;
         const hasDayKeys = DAY_ORDER.some((d) => d in hoursObj);
         if (hasDayKeys) {
+          // availability_blocks: sempre JSON no formato [{ rrule, start_time, end_time }, ...]
           const blocks = operatingHoursToAvailabilityBlocks(hoursObj);
           payload.availability_blocks = blocks;
+          // operating_hours é coluna text: sempre enviar texto (JSON string)
           payload.operating_hours = JSON.stringify(hoursObj);
-        } else {
-          payload.operating_hours = rawString;
+          payload.opening_hours = hoursObj;
         }
-      } else {
-        payload.operating_hours = rawString;
       }
       continue;
     }
-    
+
     // parking_value: combinar com o valor existente de parking (ex: "Sim, pago - R$ 10")
     if (key === "parking_value") {
       const existingParking = (data.parking as string) || (existingRecord?.parking as string) || "";
@@ -626,13 +519,9 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       if (phoneNumber !== null) {
         payload[PHONE_FIELDS[key]] = phoneNumber;
       }
-      // Also track clinic info for phone
-      if (key === "clinic_whatsapp_phone") {
-        hasClinicInfoField = true;
-      }
       continue;
     }
-    
+
     // Handle is_ai_allow_to_book_appointments specially (boolean + specificity)
     if (key === "is_ai_allow_to_book_appointments") {
       const bookingPerm = parseBookingPermission(String(value));
@@ -643,7 +532,7 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       hasCalendarLogicChanges = true;
       continue;
     }
-    
+
     // Handle followup_stages (unified question) -> splits into reactivation_lead_status_ids + lead_status_ai_activated
     if (key === "followup_stages") {
       const parsed = parseJsonSafe(value);
@@ -663,18 +552,10 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
     if (DIRECT_COLUMN_MAP[key]) {
       const columnName = DIRECT_COLUMN_MAP[key];
       let processedValue: unknown = value;
-      
+
       // Timezone: store IANA format (companies pattern), front sends label e.g. "Brasília (GMT-3)"
       if (key === "clinic_timezone" && columnName === "timezone") {
         processedValue = timezoneLabelToIana(String(value));
-      }
-      // bot_reply_to: store internal value (companies pattern), front sends label e.g. "Todos os leads"
-      else if (key === "bot_reply_to" && columnName === "bot_reply_to") {
-        processedValue = botReplyToLabelToValue(String(value));
-      }
-      // crm_provider: salvar normalizado (minúsculo/underscore; Google Calendar -> multi_cal.com)
-      else if (key === "crm_provider" && columnName === "crm_provider") {
-        processedValue = normalizeCrmProvider(String(value));
       }
       // Convert booleans (coluna própria; não salvar _raw em custom_instructions)
       else if (BOOLEAN_FIELDS.has(key)) {
@@ -701,14 +582,14 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
       else if (typeof value === 'string') {
         processedValue = sanitizeString(value);
       }
-      
+
       if (processedValue !== null && processedValue !== undefined) {
         payload[columnName] = processedValue;
       }
       continue;
     }
-    
-    // Handle instagram_links (text[] array) — companies: one element per handle
+
+    // Handle instagram_links (text[] array)
     if (INSTAGRAM_FIELDS.has(key)) {
       const parsed = parseJsonSafe(value);
       if (Array.isArray(parsed)) {
@@ -717,65 +598,59 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
           if (typeof item === 'string') return item;
           return item.username ? `@${item.username}${item.type ? ` (${item.type})` : ''}` : null;
         }).filter(Boolean) as string[];
+
         if (links.length > 0) {
           payload.instagram_links = links;
         }
       } else if (typeof parsed === 'string') {
-        // Single string: split by newline so each line = one element (companies pattern)
-        const trimmed = parsed.trim();
-        if (trimmed) {
-          const links = trimmed.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
-          payload.instagram_links = links.length > 0 ? links : [trimmed];
-        }
+        // If it's a single string, wrap in array
+        payload.instagram_links = [parsed];
       }
       continue;
     }
-    
+
     // Handle JSON column fields
     if (CUSTOM_INSTRUCTIONS_FIELDS.has(key)) {
       customInstructions[key] = parseJsonSafe(value);
       hasCustomInstructionsChanges = true;
       continue;
     }
-    
+
     if (CALENDAR_LOGIC_FIELDS.has(key)) {
       calendarLogic[key] = parseJsonSafe(value);
       hasCalendarLogicChanges = true;
       continue;
     }
-    
+
     if (CLIENT_DATA_FIELDS.has(key)) {
       clientData[key] = parseJsonSafe(value);
       hasClientDataChanges = true;
       continue;
     }
-    
+
     if (PRODUCTS_FIELDS.has(key)) {
       products[key] = parseJsonSafe(value);
       hasProductsChanges = true;
       continue;
     }
-    
+
     if (PAIN_POINTS_FIELDS.has(key)) {
       painPoints[key] = parseJsonSafe(value);
       hasPainPointsChanges = true;
       continue;
     }
-    
+
     if (ONBOARDING_DATA_FIELDS.has(key)) {
       onboardingData[key] = parseJsonSafe(value);
       hasOnboardingDataChanges = true;
       continue;
     }
-    
+
     // If field doesn't match any category, add to onboarding_data as fallback
     // This ensures ALL captured info is stored
     onboardingData[key] = parseJsonSafe(value);
     hasOnboardingDataChanges = true;
   }
-
-  // is_clinic_info_added: always true when saving onboarding data
-  payload.is_clinic_info_added = true;
 
   // Only add JSON columns if they have changes
   if (hasCustomInstructionsChanges || Object.keys(customInstructions).length > 0) {
@@ -800,19 +675,14 @@ function buildPayload(data: Record<string, unknown>, existingRecord?: Record<str
   return payload;
 }
 
-// Export for tests: validar payload sem conectar ao banco (Deno test)
-export { buildPayload };
-
-// Em testes (DENO_ENV=test) não inicia o servidor para poder importar buildPayload
-if (Deno.env.get("DENO_ENV") !== "test") {
 serve(async (req: Request) => {
   console.log("=== Onboarding Records Edge Function Called ===");
-  
+
   const originHeader = req.headers.get("origin");
   const refererHeader = req.headers.get("referer");
   const origin = originHeader || extractOrigin(refererHeader);
   const corsHeaders = getCorsHeaders(origin);
-  
+
   try {
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
@@ -829,7 +699,7 @@ serve(async (req: Request) => {
     const body = await req.json().catch(() => ({})) as Record<string, unknown>;
     const onboarding_id = body.onboarding_id as number | undefined;
     const data = body.data as Record<string, unknown> | undefined;
-    
+
     console.log("Received body:", { onboarding_id, dataKeys: data ? Object.keys(data) : [] });
 
     // Validation
@@ -841,7 +711,7 @@ serve(async (req: Request) => {
     }
 
     let existingRecord: Record<string, unknown> | null = null;
-    
+
     // If updating, fetch existing record to merge JSON columns
     if (onboarding_id) {
       const { data: existing, error: fetchError } = await supabaseAdmin
@@ -849,7 +719,7 @@ serve(async (req: Request) => {
         .select("*")
         .eq("id", onboarding_id)
         .single();
-      
+
       if (fetchError) {
         console.error("Error fetching existing record:", fetchError);
       } else {
@@ -859,7 +729,7 @@ serve(async (req: Request) => {
 
     // Build the database payload
     const payload = data ? buildPayload(data, existingRecord ?? undefined) : {};
-    
+
     console.log("Built payload:", payload);
 
     let resultData, error;
@@ -910,4 +780,3 @@ serve(async (req: Request) => {
     });
   }
 });
-}

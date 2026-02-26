@@ -199,35 +199,61 @@ IA: Agendado! ✅`,
 }
 
 /**
- * Returns the customization text template for a given flow title.
+ * Returns the customization text template for a given flow title, id or JSON { id, name }.
  * Used to pre-fill the conversation_flow_customization textarea.
  */
-export function getFlowCustomizationText(flowTitle: string): string {
-  // Try to find by title match
-  const flow = FLOW_OPTIONS.find(f => f.title === flowTitle)
+export function getFlowCustomizationText(flowTitleOrJson: string): string {
+  let id: string | null = null
+  let title: string | null = null
+  const trimmed = (flowTitleOrJson || "").trim()
+  if (trimmed.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(trimmed) as { id?: string; name?: string }
+      id = parsed.id ?? null
+      title = parsed.name ?? null
+    } catch {
+      title = trimmed
+    }
+  } else {
+    title = trimmed
+  }
+  if (id && FLOW_CUSTOMIZATION_TEXTS[id]) {
+    return FLOW_CUSTOMIZATION_TEXTS[id]
+  }
+  const flow = FLOW_OPTIONS.find(f => f.title === title || f.id === title)
   if (flow) {
     return FLOW_CUSTOMIZATION_TEXTS[flow.id] || ""
   }
-  // Try by ID directly
-  if (FLOW_CUSTOMIZATION_TEXTS[flowTitle]) {
-    return FLOW_CUSTOMIZATION_TEXTS[flowTitle]
+  if (title && FLOW_CUSTOMIZATION_TEXTS[title]) {
+    return FLOW_CUSTOMIZATION_TEXTS[title]
   }
   return ""
 }
 
 export function ConversationFlowSelect({ onSubmit, defaultValue, className }: ConversationFlowSelectProps) {
-  const [selected, setSelected] = useState<string | null>(
-    defaultValue
-      ? (FLOW_OPTIONS.find(f => f.title === defaultValue)?.id ??
-         FLOW_OPTIONS.find(f => f.id === defaultValue)?.id ??
-         null)
-      : null
-  )
+  const [selected, setSelected] = useState<string | null>(() => {
+    if (!defaultValue) return null
+    const trimmed = defaultValue.trim()
+    if (trimmed.startsWith("{")) {
+      try {
+        const parsed = JSON.parse(trimmed) as { id?: string; name?: string }
+        const id = parsed.id ?? null
+        return FLOW_OPTIONS.some(f => f.id === id) ? id : (FLOW_OPTIONS.find(f => f.title === parsed.name)?.id ?? null)
+      } catch {
+        return FLOW_OPTIONS.find(f => f.title === trimmed || f.id === trimmed)?.id ?? null
+      }
+    }
+    return FLOW_OPTIONS.find(f => f.title === trimmed || f.id === trimmed)?.id ?? null
+  })
 
   const handleSubmit = () => {
     if (selected) {
       const flow = FLOW_OPTIONS.find(f => f.id === selected)
-      onSubmit(flow?.title || selected)
+      // Edge function espera objeto com id/name para template_type; enviamos JSON para manter compatibilidade
+      onSubmit(JSON.stringify({
+        id: selected,
+        name: flow?.title || selected,
+      }))
     }
   }
 
