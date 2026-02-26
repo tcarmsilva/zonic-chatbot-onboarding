@@ -50,10 +50,17 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json()
-    console.log("[v0] Cal.com API response:", JSON.stringify(data).slice(0, 500))
+    const rawSlots = data.data?.slots || {}
+    const slotCount = Object.keys(rawSlots).length
+    if (slotCount === 0) {
+      console.warn("[v0] Cal.com returned 0 days with slots. Check: event type availability in Cal.com, CAL_EVENT_ID_1, and date range.")
+      // Log estrutura da resposta para debug (evitar log gigante)
+      const keys = data?.data ? Object.keys(data.data) : []
+      console.warn("[v0] Cal.com response.data keys:", keys, "sample:", JSON.stringify(data).slice(0, 300))
+    }
+    console.log("[v0] Cal.com API response:", slotCount, "days with slots")
 
     // Normalize slots: Cal.com v2 returns {time: "..."} objects, convert to plain strings
-    const rawSlots = data.data?.slots || {}
     const normalizedSlots: { [date: string]: string[] } = {}
     for (const [date, slots] of Object.entries(rawSlots)) {
       normalizedSlots[date] = (slots as any[]).map((slot: any) =>

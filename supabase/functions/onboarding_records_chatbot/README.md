@@ -48,7 +48,7 @@ Os seguintes campos do chatbot são salvos diretamente em colunas específicas:
 | `clinic_address` | `address` | texto |
 | `clinic_google_maps_link` | `google_maps_link` | texto |
 | `instagram_links` | `instagram_links` | text[] - array de strings |
-| `operating_hours` | `operating_hours` | json |
+| `operating_hours` | `operating_hours` (text), `availability_blocks` (json) | text: JSON string; json: array [{ rrule, start_time, end_time }] |
 | `parking` | `parking` | texto |
 | `assistant_name` | `assistant_name` | texto |
 | `bot_reply_to` | `bot_reply_to` | texto |
@@ -59,7 +59,7 @@ Os seguintes campos do chatbot são salvos diretamente em colunas específicas:
 | `booking_reminder_today` | `booking_reminder_today` | texto |
 | `booking_reminder_tomorrow` | `booking_reminder_tomorrow` | texto |
 | `deactivate_on_human_reply` | `deactivate_on_human_reply` | boolean (converte Sim/Não) |
-| `deactivation_schedule` | `availability_blocks` | json - horários de desativação (ver formato abaixo) |
+| `deactivation_schedule` | `deactivation_schedule` (json), `availability_blocks` (json) | objeto por dia + array rrule (ver formato abaixo) |
 | `is_smart_followups_activated` | `is_smart_followups_activated` | boolean |
 | `ai_reactivation_interval` | `ai_reactivation_interval` | integer (extrai horas) |
 | `reactivation_lead_status_ids` | `reactivation_lead_status_ids` | integer[] |
@@ -162,6 +162,28 @@ Para campos boolean, além do valor convertido, o valor original também é salv
 - `deactivate_on_human_reply` → `custom_instructions_inputs.deactivate_on_human_reply_raw`
 - `is_voice_reply_activated` → `custom_instructions_inputs.is_voice_reply_activated_raw`
 - etc.
+
+## Testes (sem banco de dados)
+
+Os testes garantem que os dados enviados pelo chat são **normalizados corretamente** antes de qualquer insert/update — alinhados ao padrão da tabela `companies` (timezone IANA, `bot_reply_to` como `all`/`paid_traffic_only`, `crm_provider` normalizado, telefones como número, etc.).
+
+- **O que é testado:** a função `buildPayload()` que monta o objeto gravado no banco. Nenhum insert/update real é feito.
+- **Requisitos:** não é necessário Supabase configurado nem banco; o script usa variáveis de ambiente falsas e não inicia o servidor HTTP.
+
+**Como rodar (na raiz do projeto):**
+
+```bash
+pnpm test:edge
+```
+
+**Na pasta da função:**
+
+```bash
+cd supabase/functions/onboarding_records_chatbot
+DENO_ENV=test SUPABASE_URL=https://test.supabase.co SUPABASE_SERVICE_ROLE_KEY=test-key deno test --allow-env --no-check
+```
+
+Saída esperada: `ok | 10 passed | 0 failed`.
 
 ## Deploy
 

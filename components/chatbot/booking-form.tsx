@@ -129,8 +129,11 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
       ;(userData as any).usedCalendarId = usedCalendarId
 
       if (onboardingId) {
-        console.log("[v0] Saving schedule_event to chatbot_onboarding.onboarding_data")
-        await updateOnboardingRecord(onboardingId, { schedule_event: result.data })
+        console.log("[v0] Saving provisional schedule_event to DB (uid:", result.data?.uid + ")")
+        const updateResult = await updateOnboardingRecord(onboardingId, { schedule_event: result.data })
+        if (!updateResult.success) {
+          console.error("[v0] Failed to save provisional booking to DB:", updateResult.error)
+        }
       }
 
       setStep("email-choice")
@@ -193,10 +196,15 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
       console.log("[v0] Booking recreated successfully with email!")
 
       if (onboardingId) {
-        console.log("[v0] Updating onboarding_data with email and schedule_event")
-        await updateOnboardingRecord(onboardingId, {
+        console.log("[v0] Updating onboarding record with final schedule_event (uid:", newBooking.data?.uid + ")")
+        const updateResult = await updateOnboardingRecord(onboardingId, {
           schedule_event: newBooking.data,
         })
+        if (!updateResult.success) {
+          console.error("[v0] Failed to save final booking to DB:", updateResult.error)
+        }
+      } else {
+        console.warn("[v0] No onboardingId — final schedule_event not saved to DB")
       }
 
       // Verificar se é clínica (não é Agência nem Franqueadora)

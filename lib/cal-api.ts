@@ -45,11 +45,13 @@ export async function prefetchSlots(calendarId: CalendarId = "1"): Promise<void>
 
     if (response.ok) {
       const data = await response.json()
-      cache[cacheKey] = {
-        slots: data,
-        timestamp: now,
+      const hasSlots = data?.data?.slots && Object.keys(data.data.slots).length > 0
+      if (hasSlots) {
+        cache[cacheKey] = { slots: data, timestamp: now }
+        console.log("[v0] Slots prefetched successfully for calendar", calendarId)
+      } else {
+        console.log("[v0] Prefetch: no slots returned for calendar", calendarId, "(not cached)")
       }
-      console.log("[v0] Slots prefetched successfully for calendar", calendarId)
     }
   } catch (err) {
     console.error("[v0] Prefetch error:", err)
@@ -89,9 +91,13 @@ export async function getAvailableSlots(
 
   const data = await response.json()
 
-  cache[cacheKey] = {
-    slots: data,
-    timestamp: Date.now(),
+  // Só cachear quando houver slots; senão "Tentar novamente" refaz a requisição
+  const hasSlots = data?.data?.slots && Object.keys(data.data.slots).length > 0
+  if (hasSlots) {
+    cache[cacheKey] = {
+      slots: data,
+      timestamp: Date.now(),
+    }
   }
 
   return data
@@ -179,8 +185,13 @@ export async function createBooking(
   })
 
   if (!response.ok) {
-    const error = await response.json()
-    console.error("[v0] Booking API error:", error)
+    let error: { error?: string } = {}
+    try {
+      error = await response.json()
+    } catch {
+      // Resposta não é JSON
+    }
+    console.error("[v0] Booking API error:", response.status, error)
     throw new Error(error.error || `Booking error: ${response.status}`)
   }
 
