@@ -4,8 +4,8 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, Loader2, Calendar, Clock } from "lucide-react"
-import { createBooking, cancelBooking, prefetchSlots } from "@/lib/cal-api"
+import { Loader2, Calendar, Clock } from "lucide-react"
+import { createBooking, prefetchSlots } from "@/lib/cal-api"
 import { updateOnboardingRecord } from "@/lib/supabase-onboarding"
 import type { CalendarId } from "@/lib/cal-config"
 
@@ -22,15 +22,15 @@ interface BookingFormProps {
   onBack: () => void
   onboardingId?: number | null
   calendarId?: CalendarId
-  calendarIds?: CalendarId[] // Se fornecido, tentará criar booking nos calendários até um funcionar
+  calendarIds?: CalendarId[]
+  initialEmail?: string
+  fallbackUrl?: string
 }
 
-export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboardingId, calendarId = "1", calendarIds }: BookingFormProps) {
-  const [step, setStep] = useState<"confirm" | "email-choice" | "email-input">("confirm")
-  const [email, setEmail] = useState("")
+export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboardingId, calendarId = "1", calendarIds, initialEmail = "", fallbackUrl }: BookingFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [bookingUid, setBookingUid] = useState<string | null>(null)
+  const [showFallback, setShowFallback] = useState(false)
 
   const slotDate = new Date(selectedSlot)
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -62,41 +62,26 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
   })
   const shortFormat = `${weekday} ${dayMonth} às ${formattedTime}`
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    return emailRegex.test(email)
-  }
-
-  const isValid = validateEmail(email)
+  const validateEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+  const emailToUse = (initialEmail || "").trim()
+  const canConfirm = validateEmail(emailToUse)
 
   const handleConfirmBooking = async () => {
+    if (!canConfirm) {
+      setError("E-mail inválido. Volte e informe um e-mail válido para receber o convite.")
+      return
+    }
+
     setLoading(true)
     setError(null)
 
     try {
-      console.log("[v0] Creating booking with provisional email")
-      
-      // Obter a timezone do usuário
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-      console.log("[v0] User timezone:", userTimezone)
-      console.log("[v0] Selected slot (UTC):", selectedSlot)
-      // Log para debug: mostra o horário selecionado na timezone do usuário
-      const selectedDate = new Date(selectedSlot)
-      const localTime = selectedDate.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-        timeZone: userTimezone,
-      })
-      console.log(`[v0] Selected slot in user timezone (${userTimezone}):`, localTime)
-      
-      // Se temos múltiplos calendários, randomizamos a ordem antes de tentar criar o booking
-      const calendarsToTry = calendarIds && calendarIds.length > 0 
-        ? [...calendarIds].sort(() => Math.random() - 0.5) // Randomiza a ordem
+      const calendarsToTry = calendarIds && calendarIds.length > 0
+        ? [...calendarIds].sort(() => Math.random() - 0.5)
         : [calendarId]
-      
-      console.log("[v0] Randomized calendar order:", calendarsToTry)
-      
-      let result = null
+
+      let result: Awaited<ReturnType<typeof createBooking>> | null = null
       let usedCalendarId: CalendarId = calendarId
 
       for (const calId of calendarsToTry) {
@@ -104,7 +89,7 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
           result = await createBooking(
             selectedSlot,
             userData.name,
-            "email@email.com",
+            emailToUse,
             userData.phone,
             userData.clinicName,
             calId,
@@ -112,11 +97,10 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
             userTimezone,
           )
           usedCalendarId = calId
-          console.log("[v0] Booking created successfully on calendar", calId, ":", result)
+          console.log("[v0] Booking created successfully with email:", emailToUse)
           break
         } catch (err) {
-          console.log("[v0] Failed to create booking on calendar", calId, ", trying next...")
-          // Continua para o próximo calendário
+          console.log("[v0] Failed to create booking on calendar", calId, ", trying next...", err)
         }
       }
 
@@ -124,110 +108,76 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
         throw new Error("Não foi possível criar o agendamento em nenhum calendário")
       }
 
-      setBookingUid(result.data.uid)
-      // Armazenar o calendarId usado para uso posterior
-      ;(userData as any).usedCalendarId = usedCalendarId
-
       if (onboardingId) {
-        console.log("[v0] Saving provisional schedule_event to DB (uid:", result.data?.uid + ")")
         const updateResult = await updateOnboardingRecord(onboardingId, { schedule_event: result.data })
         if (!updateResult.success) {
-          console.error("[v0] Failed to save provisional booking to DB:", updateResult.error)
+          console.error("[v0] Failed to save booking to DB:", updateResult.error)
         }
       }
 
-      setStep("email-choice")
+      const isClinic = !!(userData.companyType && userData.companyType !== "Agência" && userData.companyType !== "Franqueadora")
+      onSuccess({ date: formattedDate, time: formattedTime, shortFormat }, isClinic)
     } catch (err) {
       console.error("[v0] Booking error:", err)
-      setError("Erro ao criar agendamento. Tente novamente.")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleEmailChoice = async (choice: string) => {
-    if (choice === "Sim, quero receber") {
-      setStep("email-input")
-    } else if (choice === "Não precisa") {
-      // Verificar se é clínica (não é Agência nem Franqueadora)
-      const isClinic = !!(userData.companyType && userData.companyType !== "Agência" && userData.companyType !== "Franqueadora")
-      onSuccess({ date: formattedDate, time: formattedTime, shortFormat }, isClinic)
-    }
-  }
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!isValid) {
-      setError("Digite um e-mail válido")
-      return
-    }
-
-    if (!bookingUid) {
-      setError("ID do agendamento não encontrado")
-      return
-    }
-
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Usar o calendarId que foi usado para criar o booking original
-      const usedCalendarId = (userData as any).usedCalendarId || calendarId
+      const errorMessage = err instanceof Error ? err.message : String(err)
       
-      console.log("[v0] Cancelling old booking:", bookingUid)
-      await cancelBooking(bookingUid, usedCalendarId, "User wants to receive email confirmation")
-
-      // Obter a timezone do usuário
-      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-      
-      console.log("[v0] Creating new booking with real email:", email)
-      const newBooking = await createBooking(
-        selectedSlot,
-        userData.name,
-        email,
-        userData.phone,
-        userData.clinicName,
-        usedCalendarId,
-        `Telefone: ${userData.phone}`,
-        userTimezone,
-      )
-
-      console.log("[v0] Booking recreated successfully with email!")
-
-      if (onboardingId) {
-        console.log("[v0] Updating onboarding record with final schedule_event (uid:", newBooking.data?.uid + ")")
-        const updateResult = await updateOnboardingRecord(onboardingId, {
-          schedule_event: newBooking.data,
-        })
-        if (!updateResult.success) {
-          console.error("[v0] Failed to save final booking to DB:", updateResult.error)
-        }
+      if (errorMessage.includes("503") || errorMessage.includes("502") || errorMessage.includes("temporariamente") || errorMessage.includes("Service") || errorMessage.includes("nenhum calendário")) {
+        setError("O serviço de agendamento está temporariamente indisponível.")
+        setShowFallback(true)
       } else {
-        console.warn("[v0] No onboardingId — final schedule_event not saved to DB")
+        setError("Erro ao criar agendamento. Tente novamente.")
       }
-
-      // Verificar se é clínica (não é Agência nem Franqueadora)
-      const isClinic = !!(userData.companyType && userData.companyType !== "Agência" && userData.companyType !== "Franqueadora")
-      onSuccess({ date: formattedDate, time: formattedTime, shortFormat }, isClinic)
-    } catch (err) {
-      console.error("[v0] Update error:", err)
-      setError("Erro ao atualizar e-mail. Tente novamente.")
     } finally {
       setLoading(false)
-    }
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey && isValid && !loading) {
-      e.preventDefault()
-      handleSubmit(e as any)
     }
   }
 
   useEffect(() => {
     prefetchSlots(calendarId)
   }, [calendarId])
+
+  if (showFallback && fallbackUrl) {
+    return (
+      <div className="space-y-4 px-4">
+        <div className="bg-white/80 border-2 border-[#0051fe]/25 rounded-2xl p-4 space-y-2">
+          <p className="text-sm font-medium text-[#04152b]">
+            Não foi possível completar o agendamento automaticamente.
+          </p>
+          <p className="text-xs text-[#04152b]/70">
+            Use o calendário abaixo para agendar diretamente no Cal.com:
+          </p>
+        </div>
+        
+        <div className="bg-white rounded-2xl overflow-hidden border-2 border-[#0051fe]/20" style={{ minHeight: "600px" }}>
+          <iframe
+            src={`${fallbackUrl}?embed=true&name=${encodeURIComponent(userData.name)}&email=${encodeURIComponent(emailToUse)}`}
+            width="100%"
+            height="600"
+            frameBorder="0"
+            title="Cal.com Booking"
+            className="w-full"
+          />
+        </div>
+
+        <Button
+          onClick={onBack}
+          variant="outline"
+          className="w-full rounded-3xl !bg-white !border-2 !border-[#0051fe] !text-[#04152b] hover:!bg-[#0051fe]/10 py-3 transition-colors"
+        >
+          Voltar para escolher outro horário
+        </Button>
+
+        <a
+          href={fallbackUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block text-center text-sm text-[#0051fe] hover:underline"
+        >
+          Ou abrir calendário em nova aba
+        </a>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 px-4">
@@ -243,104 +193,36 @@ export function BookingForm({ selectedSlot, userData, onSuccess, onBack, onboard
         </div>
       </div>
 
-      {step === "confirm" && (
-        <div className="space-y-3">
-          <Button
-            onClick={handleConfirmBooking}
-            disabled={loading}
-            className="w-full rounded-3xl bg-[#0051fe] px-6 py-7 text-lg font-semibold text-white hover:bg-[#0046d9] transition-colors shadow-lg"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Confirmando...
-              </>
-            ) : (
-              "Confirmar agendamento"
-            )}
-          </Button>
-          <Button
-            onClick={onBack}
-            disabled={loading}
-            variant="outline"
-            className="w-full rounded-3xl !bg-white !border-2 !border-[#0051fe] !text-[#04152b] hover:!bg-[#0051fe]/10 py-3 transition-colors"
-          >
-            Escolher outro horário
-          </Button>
-          {error && <p className="text-sm text-[#04152b] text-center">{error}</p>}
-        </div>
-      )}
-
-      {step === "email-choice" && (
-        <div className="space-y-4">
-          <div className="text-center space-y-2">
-            <p className="text-[#0051fe] text-lg font-semibold">Agendamento confirmado!</p>
-            <p className="text-[#04152b] text-base">Você quer receber a confirmação e o convite por e-mail?</p>
-          </div>
-          <div className="space-y-3">
-            <Button
-              onClick={() => handleEmailChoice("Sim, quero receber")}
-              disabled={loading}
-              className="w-full rounded-full bg-[#0051fe] px-6 py-3 text-base font-medium text-white hover:bg-[#0046d9] transition-colors"
-            >
-              Sim, quero receber
-            </Button>
-            <Button
-              onClick={() => handleEmailChoice("Não precisa")}
-              disabled={loading}
-              variant="outline"
-              className="w-full rounded-full !bg-white border-2 border-[#0051fe]/30 !text-[#04152b] hover:!bg-[#0051fe]/10 py-3 transition-colors"
-            >
-              Não precisa
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {step === "email-input" && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 rounded-2xl border-2 border-[#0051fe] bg-white/80 px-4 py-3">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value)
-                  setError(null)
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder="seuemail@exemplo.com"
-                disabled={loading}
-                className="flex-1 bg-transparent text-[#04152b] placeholder:text-[#04152b]/50 outline-none text-base"
-              />
-              <Button
-                size="icon"
-                onClick={handleSubmit}
-                disabled={!isValid || loading}
-                type="button"
-                className="size-10 shrink-0 rounded-full bg-[#0051fe] hover:bg-[#0046d9] disabled:opacity-50 text-white"
-              >
-                {loading ? <Loader2 className="size-5 animate-spin" /> : <ArrowUp className="size-5" />}
-              </Button>
-            </div>
-            {error && <p className="text-sm text-[#04152b] px-2">{error}</p>}
-          </div>
-          <Button
-            type="submit"
-            className="w-full rounded-3xl bg-[#0051fe] px-6 py-7 text-lg font-semibold text-white hover:bg-[#0046d9] transition-colors shadow-lg"
-            disabled={!isValid || loading}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Enviando...
-              </>
-            ) : (
-              "Enviar convite"
-            )}
-          </Button>
-        </form>
-      )}
+      <div className="space-y-3">
+        {emailToUse && (
+          <p className="text-sm text-[#04152b]/80">
+            O convite será enviado para: <strong>{emailToUse}</strong>
+          </p>
+        )}
+        <Button
+          onClick={handleConfirmBooking}
+          disabled={loading || !canConfirm}
+          className="w-full rounded-3xl bg-[#0051fe] px-6 py-7 text-lg font-semibold text-white hover:bg-[#0046d9] transition-colors shadow-lg disabled:opacity-60"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+              Confirmando...
+            </>
+          ) : (
+            "Confirmar agendamento"
+          )}
+        </Button>
+        <Button
+          onClick={onBack}
+          disabled={loading}
+          variant="outline"
+          className="w-full rounded-3xl !bg-white !border-2 !border-[#0051fe] !text-[#04152b] hover:!bg-[#0051fe]/10 py-3 transition-colors"
+        >
+          Escolher outro horário
+        </Button>
+        {error && <p className="text-sm text-red-600 text-center">{error}</p>}
+      </div>
     </div>
   )
 }

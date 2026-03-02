@@ -33,8 +33,27 @@ export async function POST(request: Request) {
     console.log("[v0] Cal.com cancel response:", responseText)
 
     if (!response.ok) {
-      console.error("[v0] Cal.com cancel booking error:", response.status, responseText)
-      return NextResponse.json({ error: `Cancel error: ${response.status}`, details: responseText }, { status: 400 })
+      let parsed: any = null
+      try {
+        parsed = JSON.parse(responseText)
+      } catch {
+        parsed = responseText
+      }
+
+      // Se o booking já estiver cancelado, tratamos como sucesso para não bloquear o fluxo
+      const alreadyCancelled =
+        typeof parsed === "object" &&
+        parsed?.error?.message &&
+        typeof parsed.error.message === "string" &&
+        parsed.error.message.includes("has been cancelled already")
+
+      if (alreadyCancelled) {
+        console.warn("[v0] Booking already cancelled in Cal.com, treating as success.")
+        return NextResponse.json({ status: "already_cancelled" })
+      }
+
+      console.error("[v0] Cal.com cancel booking error:", response.status, parsed)
+      return NextResponse.json({ error: `Cancel error: ${response.status}`, details: parsed }, { status: 400 })
     }
 
     const data = JSON.parse(responseText)

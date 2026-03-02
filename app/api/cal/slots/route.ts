@@ -1,6 +1,15 @@
 import { NextResponse } from "next/server"
 import { getCalendarConfig, validateCalendarConfig, type CalendarId } from "@/lib/cal-config"
 
+function normalizeDateKey(key: string): string | null {
+  const d = new Date(key)
+  if (Number.isNaN(d.getTime())) return null
+  const y = d.getUTCFullYear()
+  const m = (d.getUTCMonth() + 1).toString().padStart(2, "0")
+  const day = d.getUTCDate().toString().padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
@@ -60,12 +69,16 @@ export async function GET(request: Request) {
     }
     console.log("[v0] Cal.com API response:", slotCount, "days with slots")
 
-    // Normalize slots: Cal.com v2 returns {time: "..."} objects, convert to plain strings
+    // Normalize: chaves em YYYY-MM-DD e slots como string (time ou start)
     const normalizedSlots: { [date: string]: string[] } = {}
-    for (const [date, slots] of Object.entries(rawSlots)) {
-      normalizedSlots[date] = (slots as any[]).map((slot: any) =>
-        typeof slot === "string" ? slot : slot.time
-      )
+    for (const [dateKey, slots] of Object.entries(rawSlots)) {
+      const dateStr = normalizeDateKey(dateKey)
+      if (!dateStr) continue
+      const list = (slots as any[]).map((slot: any) => {
+        if (typeof slot === "string") return slot
+        return slot?.time ?? slot?.start ?? ""
+      }).filter(Boolean)
+      if (list.length) normalizedSlots[dateStr] = list
     }
 
     const transformedData = {

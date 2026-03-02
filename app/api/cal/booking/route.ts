@@ -78,6 +78,31 @@ export async function POST(request: Request) {
     } else {
       console.log("[v0] Creating booking:", { start, name, email, company, phone, eventTypeId: config.eventId, calendarId: calId })
 
+      // Monta payload base para criação do booking
+      const bookingPayload: any = {
+        eventTypeId: config.eventId,
+        start,
+        attendee: {
+          name,
+          email,
+          timeZone: attendeeTimeZone,
+          ...(attendeePhoneE164 && { phoneNumber: attendeePhoneE164 }),
+          language: "pt",
+        },
+        metadata: {
+          notes: notes || "",
+          company: company || "Não informado",
+        },
+      }
+
+      // Opcionalmente envia bookingFieldsResponses se tivermos o slug configurado via env
+      const bookingFieldSlug = process.env.CAL_BOOKING_COMPANY_FIELD_SLUG
+      if (bookingFieldSlug) {
+        bookingPayload.bookingFieldsResponses = {
+          [bookingFieldSlug]: company || "Não informado",
+        }
+      }
+
       const response = await fetch("https://api.cal.com/v2/bookings", {
         method: "POST",
         headers: {
@@ -85,32 +110,20 @@ export async function POST(request: Request) {
           "cal-api-version": "2024-08-13",
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          eventTypeId: config.eventId,
-          start,
-          attendee: {
-            name,
-            email,
-            timeZone: attendeeTimeZone,
-            ...(attendeePhoneE164 && { phoneNumber: attendeePhoneE164 }),
-            language: "pt",
-          },
-          // Cal.com event type 4610188 exige o campo "Nomedaempresa"; enviamos também "company" se o tipo usar
-          bookingFieldsResponses: {
-            company: company || "Não informado",
-            Nomedaempresa: company || "Não informado",
-          },
-          metadata: {
-            notes: notes || "",
-          },
-        }),
+        body: JSON.stringify(bookingPayload),
       })
 
       if (!response.ok) {
         const errorText = await response.text()
-        console.error("[v0] Cal.com booking error:", response.status, errorText)
+        let parsedDetails: any = null
+        try {
+          parsedDetails = JSON.parse(errorText)
+        } catch {
+          parsedDetails = errorText
+        }
+        console.error("[v0] Cal.com booking error:", response.status, parsedDetails)
         return NextResponse.json(
-          { error: `Booking error: ${response.status}`, details: errorText },
+          { error: `Booking error: ${response.status}`, details: parsedDetails },
           { status: response.status },
         )
       }
