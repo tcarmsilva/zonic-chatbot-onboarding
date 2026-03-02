@@ -35,6 +35,7 @@ import { FollowupStagesSelect } from "./followup-stages-select"
 import { CalendarScheduler } from "./calendar-scheduler"
 import { TypingIndicator } from "./typing-indicator"
 import { ResumePrompt } from "./resume-prompt"
+import { BookingCompletion } from "./booking-completion"
 import { MetaEvents, GTMEvents } from "@/lib/tracking"
 import { MetaCAPI } from "@/lib/meta-capi"
 import { prefetchSlots } from "@/lib/cal-api"
@@ -95,6 +96,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
   const [showDoctorsList, setShowDoctorsList] = useState(false)
   const [showFollowupStages, setShowFollowupStages] = useState(false)
   const [showCalendar, setShowCalendar] = useState(false)
+  const [calendarMountKey, setCalendarMountKey] = useState(0)
   const [userData, setUserData] = useState<Record<string, string>>({})
   const [welcomeComplete, setWelcomeComplete] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
@@ -134,27 +136,71 @@ export function ChatContainer({ config }: ChatContainerProps) {
   useEffect(() => {
     const checkSavedState = () => {
       const savedState = loadChatState()
-      
+
+      // Já concluído (ex.: agendamento feito): não mostrar "Continuar de onde parei", restaurar e mostrar tela de conclusão
+      if (savedState && savedState.isComplete) {
+        setUserData(savedState.userData)
+        setWelcomeComplete(true)
+        setIsComplete(true)
+        setBookingInfo(savedState.bookingInfo)
+        setOnboardingId(savedState.onboardingId ?? null)
+        setCurrentStepIndex(savedState.currentStepIndex ?? 0)
+        setShowResumePrompt(false)
+        const calendarConfig = config.calendar
+        const info = savedState.bookingInfo
+        if (calendarConfig && info) {
+          setMessages([{
+            id: `complete-${Date.now()}`,
+            type: "bot",
+            content: (
+              <BookingCompletion
+                title={calendarConfig.completionMessage.title}
+                message={calendarConfig.completionMessage.message}
+                bookingInfo={{ date: info.date, time: info.time }}
+                onReschedule={handleReschedule}
+                onStartFresh={handleResetFromCompletion}
+              />
+            ),
+            showAvatar: true,
+          }])
+        } else {
+          setMessages([{
+            id: `complete-${Date.now()}`,
+            type: "bot",
+            content: (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="size-6 text-green-500" />
+                  <span className="font-bold text-lg text-[#0051fe]">{config.completionMessage?.title ?? "Concluído"}</span>
+                </div>
+                <div>{config.completionMessage?.message ?? "Você completou o onboarding."}</div>
+              </div>
+            ),
+            showAvatar: true,
+          }])
+        }
+        setIsCheckingResume(false)
+        return
+      }
+
       if (savedState && savedState.currentStepIndex >= 0 && Object.keys(savedState.userData).length > 0) {
-        // User has progress saved - show resume prompt
+        // User has progress saved but not complete - show resume prompt
         const summary = getSavedProgressSummary(config.steps.length)
         if (summary) {
           setSavedProgressSummary(summary)
           setShowResumePrompt(true)
         } else {
-          // No valid summary, start fresh
           setShowResumePrompt(false)
         }
       } else {
-        // No saved state, start fresh
         setShowResumePrompt(false)
       }
-      
+
       setIsCheckingResume(false)
     }
 
     checkSavedState()
-  }, [config.steps.length])
+  }, [config.steps.length, config.calendar, config.completionMessage])
 
   // ============================================
   // PERSISTENCE: Save state after changes
@@ -227,6 +273,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
         savedState.currentStepIndex >= filteredSteps.length
       ) {
         addBotMessage(config.calendar.preScheduleMessage)
+        setCalendarMountKey((k) => k + 1)
         setShowCalendar(true)
       }
     }, 500)
@@ -816,6 +863,7 @@ export function ChatContainer({ config }: ChatContainerProps) {
     if (config.calendar) {
       simulateTyping(() => {
         addBotMessage(config.calendar!.preScheduleMessage)
+        setCalendarMountKey((k) => k + 1)
         setShowCalendar(true)
         
         // Track calendar view
@@ -861,26 +909,30 @@ export function ChatContainer({ config }: ChatContainerProps) {
     
     simulateTyping(() => {
       addBotMessage(
-        <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="size-6 text-green-500" />
-            <span className="font-bold text-lg text-[#0051fe]">{calendarConfig.completionMessage.title}</span>
-          </div>
-          <div>{calendarConfig.completionMessage.message}</div>
-          <div className="bg-white/60 border-2 border-[#0051fe]/20 rounded-2xl p-4 space-y-3 mt-4">
-            <div className="flex items-center gap-2 text-sm text-[#04152b]">
-              <Calendar className="h-4 w-4 text-[#0051fe]" />
-              <span className="font-medium">{info.date}</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-[#04152b]">
-              <Clock className="h-4 w-4 text-[#0051fe]" />
-              <span className="font-medium">{info.time}</span>
-            </div>
-          </div>
-        </div>,
+        <BookingCompletion
+          title={calendarConfig.completionMessage.title}
+          message={calendarConfig.completionMessage.message}
+          bookingInfo={{ date: info.date, time: info.time }}
+          onReschedule={handleReschedule}
+          onStartFresh={handleResetFromCompletion}
+        />,
         false,
       )
     }, 500)
+  }
+
+  const handleReschedule = () => {
+    setIsComplete(false)
+    setBookingInfo(null)
+    clearChatState()
+    setCalendarMountKey((k) => k + 1)
+    setShowCalendar(true)
+    addBotMessage("Vamos escolher um novo horário para sua reunião.")
+  }
+
+  const handleResetFromCompletion = () => {
+    clearChatState()
+    window.location.reload()
   }
 
   // Get user data formatted for calendar scheduler (envia para Cal.com o responsável pelo projeto e seu telefone)
@@ -1217,18 +1269,25 @@ export function ChatContainer({ config }: ChatContainerProps) {
             </div>
           )}
 
-          {/* Calendar Scheduler */}
-          {showCalendar && config.calendar && (
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4">
-              <CalendarScheduler 
-                userData={getCalendarUserData()} 
-                onboardingId={onboardingId}
-                calendarIds={[(config.calendar.calendarId || "1") as CalendarId]}
-                fallbackUrl={config.calendar.fallbackUrl}
-                onBookingComplete={(info) => handleBookingComplete(info)}
-              />
-            </div>
-          )}
+          {/* Calendar Scheduler - mostrar somente quando chegarmos na etapa de agendamento */}
+          {(showCalendar ||
+            (welcomeComplete &&
+              !isComplete &&
+              config.calendar &&
+              currentStepIndex >= getFilteredSteps(userData).length)) &&
+            config.calendar && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-300 py-4 min-h-[320px]" data-calendar-visible>
+                <h2 className="text-lg font-semibold text-[#04152b] mb-3 px-4">Agende sua reunião</h2>
+                <CalendarScheduler
+                  key={calendarMountKey}
+                  userData={getCalendarUserData()}
+                  onboardingId={onboardingId}
+                  calendarIds={[(config.calendar.calendarId || "1") as CalendarId]}
+                  fallbackUrl={config.calendar.fallbackUrl}
+                  onBookingComplete={(info) => handleBookingComplete(info)}
+                />
+              </div>
+            )}
 
           <div ref={bottomRef} />
         </div>

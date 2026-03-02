@@ -75,53 +75,41 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fa
         throw new Error("Invalid response format")
       }
 
-      const allDays: DayAvailability[] = []
+      // Implementação simplificada:
+      // - usa diretamente as chaves de data que a API retornou (já normalizadas como YYYY-MM-DD)
+      // - para cada dia, converte os horários em objetos { start, formatted }
+      const slotsByDate = response.data.slots as Record<string, (string | { time?: string; start?: string })[]>
+      const sortedDates = Object.keys(slotsByDate).sort()
 
-      for (let i = 0; i < 30; i++) {
-        const date = new Date(today)
-        date.setDate(today.getDate() + i)
-        const dateStr = date.toISOString().split("T")[0]
+      const allDays: DayAvailability[] = sortedDates.slice(0, 30).map((dateStr) => {
+        const rawSlots = slotsByDate[dateStr] || []
+        const date = new Date(dateStr + "T00:00:00Z")
 
-        const slotsForDay = response.data.slots[dateStr] || []
-
-        const filteredSlots = slotsForDay
-          .map((slot: any) => {
-            const slotTime = typeof slot === "string" ? slot : slot.time
+        const slots: TimeSlot[] = rawSlots
+          .map((slot) => {
+            const slotTime = typeof slot === "string" ? slot : slot?.time ?? slot?.start
+            if (!slotTime) return null
             const slotDate = new Date(slotTime)
-            // Log para debug: mostra o slot original (UTC) e como aparece para o usuário
-            const hours = slotDate.getHours().toString().padStart(2, "0")
-            const minutes = slotDate.getMinutes().toString().padStart(2, "0")
-            const localTime = `${hours}:${minutes}`
-            console.log(`[v0] Slot: ${slotTime} (UTC) -> ${localTime} (${userTimezone})`)
-            return slotDate
-          })
-          .filter((slotDate: Date) => {
-            if (i === 0) {
-              return slotDate > now
-            }
-            return true
-          })
-          .map((slotDate: Date) => {
+            if (Number.isNaN(slotDate.getTime())) return null
             const hours = slotDate.getHours().toString().padStart(2, "0")
             const minutes = slotDate.getMinutes().toString().padStart(2, "0")
             return {
-              start: slotDate.toISOString(), // Mantém UTC para envio ao Cal.com
-              formatted: `${hours}:${minutes}`, // Exibe na timezone local do usuário
-            }
+              start: slotDate.toISOString(),
+              formatted: `${hours}:${minutes}`,
+            } as TimeSlot
           })
+          .filter((s): s is TimeSlot => s !== null)
 
-        if (filteredSlots.length > 0) {
-          allDays.push({
-            date: dateStr,
-            dayLabel: "",
-            dayNumber: `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`,
-            slots: filteredSlots,
-            isAvailable: true,
-          })
+        return {
+          date: dateStr,
+          dayLabel: "",
+          dayNumber: `${date.getDate().toString().padStart(2, "0")}/${(date.getMonth() + 1).toString().padStart(2, "0")}`,
+          slots,
+          isAvailable: slots.length > 0,
         }
-      }
+      }).filter((day) => day.slots.length > 0)
 
-      console.log("[v0] Days with availability:", allDays.length)
+      console.log("[v0] Days with availability (simple):", allDays.length)
 
       const daysToShow = allDays.slice(0, 3)
 
@@ -169,17 +157,28 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fa
   }
 
   if (error || days.length === 0) {
-    // Fallback: embed Cal.com calendar when API returns no slots or errors
+    // Fallback: embed + link para abrir no Cal.com (sempre algo visível)
     if (fallbackUrl) {
       return (
-        <div className="w-full">
+        <div className="w-full space-y-4">
           <iframe
             src={fallbackUrl}
-            className="w-full border-0 rounded-lg"
-            style={{ height: "680px", minHeight: "680px" }}
+            className="w-full border-0 rounded-lg bg-white"
+            style={{ height: "520px", minHeight: "400px" }}
             loading="lazy"
             allow="camera; microphone; payment"
+            title="Calendário Cal.com"
           />
+          <div className="text-center">
+            <a
+              href={fallbackUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-lg border-2 border-[#0051fe] bg-[#0051fe] px-4 py-2.5 text-sm font-medium text-white hover:bg-[#0046d9] transition-colors"
+            >
+              Abrir calendário no Cal.com
+            </a>
+          </div>
         </div>
       )
     }
