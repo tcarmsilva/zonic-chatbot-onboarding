@@ -76,8 +76,9 @@ export function formatLocalDisplay(
 ): string {
   if (country.code === "BR") {
     if (localDigits.length <= 2) return localDigits.length ? `(${localDigits}` : ""
-    if (localDigits.length <= 7) return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2)}`
-    if (localDigits.length <= 11) return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2, 7)}-${localDigits.slice(7)}`
+    if (localDigits.length <= 6) return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2)}`
+    // Fixo (10 dígitos): (XX) XXXX-XXXX | Celular (11 dígitos): (XX) XXXXX-XXXX
+    if (localDigits.length <= 10) return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2, 6)}-${localDigits.slice(6)}`
     return `(${localDigits.slice(0, 2)}) ${localDigits.slice(2, 7)}-${localDigits.slice(7, 11)}`
   }
   if (localDigits.length <= 3) return localDigits
@@ -90,7 +91,7 @@ export function validateFullPhone(full: string): boolean {
   if (!parsed) return false
   const { country, localDigits } = parsed
   if (country.code === "BR") {
-    return localDigits.length === 11 && localDigits[2] === "9"
+    return localDigits.length >= 10 && localDigits.length <= 11
   }
   return localDigits.length >= 8
 }
