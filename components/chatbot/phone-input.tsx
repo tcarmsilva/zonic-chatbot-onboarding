@@ -19,7 +19,8 @@ function parsePhoneDefault(defaultVal?: string): { country: typeof COUNTRIES[0];
       if (country.code === "BR" && local.length >= 10) {
         const formatted =
           local.length <= 2 ? `(${local}` :
-          local.length <= 7 ? `(${local.slice(0, 2)}) ${local.slice(2)}` :
+          local.length <= 6 ? `(${local.slice(0, 2)}) ${local.slice(2)}` :
+          local.length <= 10 ? `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}` :
           `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7, 11)}`
         return { country, phone: formatted }
       }
@@ -82,8 +83,11 @@ export function PhoneInput({ onSubmit, defaultValue, className }: PhoneInputProp
       if (numbers.length <= 2) {
         return numbers.length ? `(${numbers}` : ""
       }
-      if (numbers.length <= 7) {
+      if (numbers.length <= 6) {
         return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`
+      }
+      if (numbers.length <= 10) {
+        return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 6)}-${numbers.slice(6)}`
       }
       if (numbers.length <= 11) {
         return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`
@@ -104,8 +108,7 @@ export function PhoneInput({ onSubmit, defaultValue, className }: PhoneInputProp
   const validatePhone = (phone: string) => {
     const numbers = phone.replace(/\D/g, "")
     if (selectedCountry.code === "BR") {
-      if (numbers.length !== 11) return "Digite um número válido com DDD"
-      if (numbers[2] !== "9") return "Digite um número de celular válido"
+      if (numbers.length < 10 || numbers.length > 11) return "Digite um número válido com DDD"
       return ""
     }
     if (numbers.length < 8) return "Digite um número válido"
@@ -134,7 +137,7 @@ export function PhoneInput({ onSubmit, defaultValue, className }: PhoneInputProp
   const numbers = value.replace(/\D/g, "")
   const isValid =
     selectedCountry.code === "BR"
-      ? numbers.length === 11 && numbers[2] === "9"
+      ? numbers.length >= 10 && numbers.length <= 11
       : numbers.length >= 8
 
   const placeholder =
