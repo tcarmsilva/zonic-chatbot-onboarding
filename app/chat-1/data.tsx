@@ -10,7 +10,7 @@ export const chatConfig: ChatbotConfig = {
     {
       content: (
         <span>
-          Olá! Bem-vindo ao <strong style={{ color: "#0051fe" }}>onboarding da Zonic</strong>! 🎉
+          Olá! Bem-vindo ao <strong style={{ color: "#0051fe" }}>onboarding da Zonic</strong>!
         </span>
       ),
       showAvatar: true,
@@ -26,7 +26,22 @@ export const chatConfig: ChatbotConfig = {
     {
       content: (
         <span>
-          Para agilizar, tenha em mãos: <strong>CNPJ</strong> da clínica, <strong>telefones</strong> de contato, <strong>endereço</strong> e, se tiver, perfis do <strong>Instagram</strong>.
+          Para agilizar, tenha em mãos: CNPJ da clínica, telefones de contato, endereço e, se tiver, perfis do Instagram.
+        </span>
+      ),
+      showAvatar: false,
+    },
+    {
+      content: (
+        <span>
+          <strong>⭐️ Antes de começar, algumas observações importantes:</strong>
+          <br />
+          <br />
+          • O formulário leva aproximadamente 15 minutos para ser preenchido.
+          <br />
+          • Recomendamos responder pelo computador, pois facilita o preenchimento.
+          <br />
+          • Quanto mais informações você colocar, melhor. As suas respostas serão usadas para criar a primeira versão da IA de atendimento da sua clínica, então detalhes ajudam a deixar o assistente muito mais preciso desde o início.
         </span>
       ),
       showAvatar: false,
