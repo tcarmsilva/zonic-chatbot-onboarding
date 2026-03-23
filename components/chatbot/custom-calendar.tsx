@@ -27,6 +27,18 @@ interface CustomCalendarProps {
   fallbackUrl?: string // URL do Cal.com para embed quando API não retorna horários
 }
 
+function parseDateKeyAsLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number)
+  return new Date(year, (month ?? 1) - 1, day ?? 1, 0, 0, 0, 0)
+}
+
+function formatLocalDateAsDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = (date.getMonth() + 1).toString().padStart(2, "0")
+  const day = date.getDate().toString().padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
 export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fallbackUrl }: CustomCalendarProps) {
   const [days, setDays] = useState<DayAvailability[]>([])
   const [selectedDay, setSelectedDay] = useState<number>(0)
@@ -52,11 +64,11 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fa
 
       const today = new Date()
       today.setHours(0, 0, 0, 0)
-      const startDate = today.toISOString().split("T")[0]
+      const startDate = formatLocalDateAsDateKey(today)
 
       const endDateObj = new Date(today)
       endDateObj.setDate(today.getDate() + 29)
-      const endDate = endDateObj.toISOString().split("T")[0]
+      const endDate = formatLocalDateAsDateKey(endDateObj)
 
       let response
 
@@ -83,7 +95,7 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fa
 
       const allDays: DayAvailability[] = sortedDates.slice(0, 30).map((dateStr) => {
         const rawSlots = slotsByDate[dateStr] || []
-        const date = new Date(dateStr + "T00:00:00Z")
+        const date = parseDateKeyAsLocalDate(dateStr)
 
         const slots: TimeSlot[] = rawSlots
           .map((slot) => {
@@ -123,8 +135,8 @@ export function CustomCalendar({ onSlotSelect, calendarId = "1", calendarIds, fa
         "Sábado",
       ]
 
-      daysToShow.forEach((day, index) => {
-        const dayDate = new Date(day.date + "T00:00:00")
+      daysToShow.forEach((day) => {
+        const dayDate = parseDateKeyAsLocalDate(day.date)
         const daysDiff = Math.floor((dayDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 
         if (daysDiff === 0) {
